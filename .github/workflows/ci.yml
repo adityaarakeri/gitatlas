@@ -1,0 +1,30 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      # 24 exercises the --liftoff-only workaround for nodejs/node#63421
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci
+      - run: npm test
+      - name: smoke test extractor and viewer generation
+        run: |
+          npm run extract -- fixtures
+          test -f fixtures/.repolens/group.json
+          test -f fixtures/.repolens/index.html
+          node -e "if (require('fs').readFileSync('fixtures/.repolens/index.html','utf8').includes('/*__DATA__*/null')) process.exit(1)"
+      - name: smoke test scoper
+        run: |
+          printf 'at PaymentService.charge (src/services/payment.ts:3:1)\n' > /tmp/t.txt
+          npm run scope -- --trace /tmp/t.txt --out fixtures/.repolens --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const r=JSON.parse(d);if(!r.anchor.resolved)process.exit(1)})"

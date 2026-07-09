@@ -1,0 +1,41 @@
+{
+  "name": "repolens",
+  "version": "0.9.0",
+  "private": true,
+  "description": "Multi-repo architecture maps you can zoom into. C4-from-code, open source.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "extract": "node bin/repolens.js extract",
+    "scope": "node bin/repolens.js scope",
+    "test": "node --liftoff-only --test --test-isolation=none --import tsx \"packages/scoper/test/*.test.ts\" \"packages/extractor/test/*.test.ts\" \"packages/analysis/test/*.test.ts\""
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "keywords": [
+    "code-graph",
+    "architecture",
+    "visualization",
+    "multi-repo",
+    "c4-model",
+    "static-analysis",
+    "knowledge-graph",
+    "developer-tools"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "d3": "^7.9.0",
+    "d3-force": "^3.0.0",
+    "tree-sitter-wasms": "^0.1.13",
+    "web-tree-sitter": "0.25.10"
+  },
+  "bin": {
+    "repolens": "bin/repolens.js"
+  }
+}

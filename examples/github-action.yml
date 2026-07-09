@@ -1,0 +1,23 @@
+# Drop this into any repo at .github/workflows/repolens.yml and every push to
+# main regenerates the architecture map as a build artifact. Rename the last
+# step to deploy to GitHub Pages if you want the map browsable at a URL.
+name: repolens map
+on:
+  push:
+    branches: [main]
+
+jobs:
+  map:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: generate the map
+        run: |
+          npx --yes repolens extract . --out .repolens
+      - uses: actions/upload-artifact@v4
+        with:
+          name: architecture-map
+          path: .repolens/index.html

@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>repolens — system map</title>
+<script>
+  // runs before first paint so the page never flashes the wrong theme
+  document.documentElement.setAttribute("data-theme",
+    matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  /* ── optical instrument ─────────────────────────────────────
+     dark  = the barrel: warm graphite, engraved markings
+     light = ground glass: the focusing screen, cool and matte  */
+  :root[data-theme="dark"] {
+    --canvas: #17181A; --plate: #1F2023; --plate-glass: rgba(31,32,35,0.95);
+    --grid: rgba(239,237,230,0.045);
+    --etch: #EFEDE6; --etch-dim: #8E8C84; --etch-faint: #55534D;
+    --index: #E2492F; --index-ink: #17181A;
+    --coating: #5BC0C9; --dof: #D9B64A;
+    --node-fill: rgba(31,32,35,0.92);
+    --halo: rgba(23,24,26,0.82);
+    --glint: drop-shadow(0 0 6px rgba(91,192,201,0.16));
+  }
+  :root[data-theme="light"] {
+    --canvas: #E7E9E6; --plate: #F4F5F3; --plate-glass: rgba(244,245,243,0.95);
+    --grid: rgba(35,36,31,0.06);
+    --etch: #23241F; --etch-dim: #6E7069; --etch-faint: #B4B6B0;
+    --index: #C53A22; --index-ink: #F4F5F3;
+    --coating: #20868F; --dof: #9A7E1C;
+    --node-fill: rgba(244,245,243,0.94);
+    --halo: rgba(231,233,230,0.8);
+    --glint: none;
+  }
+  :root {
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --disp: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--canvas); color: var(--etch);
+    font-family: var(--mono); font-size: 13px;
+    transition: background 0.25s ease, color 0.25s ease;
+  }
+  #plate, #parent, #detail, #legend, #scale, #search, #theme-seg {
+    transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+  }
+
+  #canvas-wrap {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+  svg { width: 100%; height: 100%; display: block; cursor: grab; }
+  svg:active { cursor: grabbing; }
+
+  /* viewfinder crop brackets, quiet corner detail */
+  .bracket { position: fixed; width: 26px; height: 26px; z-index: 9;
+    border-color: var(--etch-faint); border-style: solid; border-width: 0; pointer-events: none; }
+  .bracket.tl { top: 10px; left: 10px; border-top-width: 1px; border-left-width: 1px; }
+  .bracket.tr { top: 10px; right: 10px; border-top-width: 1px; border-right-width: 1px; }
+  .bracket.bl { bottom: 10px; left: 10px; border-bottom-width: 1px; border-left-width: 1px; }
+  .bracket.br { bottom: 10px; right: 10px; border-bottom-width: 1px; border-right-width: 1px; }
+
+  /* title plate */
+  #plate {
+    position: absolute; top: 18px; left: 22px; z-index: 10;
+    display: flex; align-items: center; gap: 16px;
+    background: var(--plate-glass); border: 1px solid var(--etch-faint);
+    padding: 10px 16px;
+  }
+  #plate h1 {
+    font-family: var(--disp); font-size: 15px; font-weight: 700;
+    letter-spacing: 0.22em; text-transform: uppercase;
+  }
+  #plate h1 em { font-style: normal; color: var(--index); }
+  #plate .sub { font-size: 11px; color: var(--etch-dim); margin-top: 1px; }
+  #theme-seg { display: flex; border: 1px solid var(--etch-faint); }
+  #theme-seg button {
+    background: none; border: none; color: var(--etch-dim);
+    font-family: var(--disp); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.1em; padding: 6px 10px; cursor: pointer; touch-action: manipulation;
+  }
+  #theme-seg button + button { border-left: 1px solid var(--etch-faint); }
+  #theme-seg button[aria-pressed="true"] {
+    color: var(--index); box-shadow: inset 0 -2px 0 var(--index);
+  }
+  #theme-seg button:hover { color: var(--etch); }
+  #theme-seg button:focus-visible { outline: 2px solid var(--index); outline-offset: -2px; }
+
+  /* rack-focus card: the way back up */
+  #parent {
+    position: absolute; top: 92px; left: 22px; z-index: 11;
+    display: none; align-items: center; gap: 12px;
+    background: var(--plate-glass); border: 1px solid var(--index);
+    border-left: 4px solid var(--index);
+    color: var(--etch); font-family: var(--mono); font-size: 12px;
+    padding: 12px 16px; cursor: pointer; touch-action: manipulation;
+    max-width: 250px; text-align: left;
+  }
+  #parent .arrow { color: var(--index); font-size: 16px; flex: none; }
+  #parent .lvl { font-family: var(--disp); font-weight: 600; color: var(--etch-dim);
+    font-size: 10px; letter-spacing: 0.14em; display: block; }
+  #parent .name { color: var(--index); display: block; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; max-width: 185px; }
+  #parent:hover, #parent:focus-visible { background: var(--index); outline: none; }
+  #parent:hover *, #parent:focus-visible * { color: var(--index-ink) !important; }
+  #parent:focus-visible { outline: 2px solid var(--etch); outline-offset: 2px; }
+
+  /* ── the focus scale: signature element ──
+     a lens distance scale; the red index marks current depth */
+  #bottombar {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 16px; padding: 0 22px 22px; pointer-events: none;
+  }
+  #bottombar > * { pointer-events: auto; }
+  #scale {
+    display: flex; align-items: flex-start; gap: 0;
+    background: var(--plate-glass); border: 1px solid var(--etch-faint);
+    padding: 12px 10px 10px;
+  }
+  .stop {
+    background: none; border: none; cursor: pointer; touch-action: manipulation;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 0 22px; position: relative;
+    font-family: var(--disp); color: var(--etch-faint);
+  }
+  .stop .tick { width: 1px; height: 14px; background: var(--etch-faint); }
+  .stop .lbl { font-size: 10px; font-weight: 600; letter-spacing: 0.16em; }
+  .stop .crumb { font-family: var(--mono); font-size: 10px; color: var(--index);
+    max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stop.reachable { color: var(--etch-dim); }
+  .stop.reachable .tick { background: var(--etch-dim); }
+  .stop.reachable:hover .lbl, .stop.reachable:focus-visible .lbl { color: var(--index); }
+  .stop.active { color: var(--etch); }
+  .stop.active .tick { background: var(--index); width: 3px; height: 18px; margin-top: -4px; }
+  .stop:focus-visible { outline: 2px solid var(--index); outline-offset: 2px; }
+  .stop + .stop::before {
+    content: ""; position: absolute; left: 0; top: 4px;
+    height: 8px; width: 1px; background: var(--etch-faint); opacity: 0.5;
+  }
+
+  /* readout panel */
+  #detail {
+    position: absolute; right: 22px; top: 18px; bottom: 18px; width: 290px;
+    z-index: 12; border: 1px solid var(--etch-faint); background: var(--plate-glass);
+    padding: 18px; overflow-y: auto; visibility: hidden;
+    transform: translateX(110%); transition: transform 0.25s ease, visibility 0.25s;
+  }
+  #detail.open { transform: translateX(0); visibility: visible; }
+  #detail .eyebrow { font-family: var(--disp); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.18em; color: var(--etch-dim); text-transform: uppercase; margin-bottom: 8px; }
+  #detail h2 { font-size: 14px; color: var(--index); word-break: break-all; margin: 0 20px 14px 0; }
+  #detail dl { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; font-size: 12px; }
+  #detail dt { color: var(--etch-dim); }
+  #detail dd { color: var(--etch); word-break: break-all; }
+  #detail .close-btn { position: absolute; top: 10px; right: 12px; background: none;
+    border: none; color: var(--etch-dim); font-size: 16px; cursor: pointer;
+    font-family: var(--mono); touch-action: manipulation; }
+  #detail .close-btn:focus-visible { outline: 2px solid var(--index); }
+
+  #palette {
+    position: absolute; top: 15vh; left: 50%; transform: translateX(-50%);
+    z-index: 20; width: min(480px, 90vw);
+    background: var(--plate-glass); border: 1px solid var(--index);
+  }
+  #pal-input {
+    width: 100%; background: none; border: none; border-bottom: 1px solid var(--etch-faint);
+    color: var(--etch); font-family: var(--mono); font-size: 14px; padding: 14px 16px;
+  }
+  #pal-input:focus { outline: none; }
+  #pal-list { list-style: none; max-height: 40vh; overflow-y: auto; }
+  #pal-list li { padding: 10px 16px; cursor: pointer; display: flex; gap: 10px; align-items: baseline; }
+  #pal-list li .k { font-family: var(--disp); font-size: 9px; letter-spacing: 0.14em;
+    color: var(--etch-dim); text-transform: uppercase; flex: none; width: 62px; }
+  #pal-list li .n { color: var(--etch); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #pal-list li .s { color: var(--etch-dim); font-size: 11px; margin-left: auto;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
+  #pal-list li.sel { background: var(--index); }
+  #pal-list li.sel .n, #pal-list li.sel .k, #pal-list li.sel .s { color: var(--index-ink); }
+  #pal-hint { cursor: pointer; }
+  #legend {
+    color: var(--etch-dim); font-size: 11px; line-height: 1.8;
+    background: var(--plate-glass); border: 1px solid var(--etch-faint);
+    padding: 10px 14px; max-width: 340px;
+  }
+  #legend .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+    margin-right: 7px; vertical-align: baseline; }
+
+  #search {
+    position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 10;
+    background: var(--plate-glass); border: 1px solid var(--etch-faint);
+    color: var(--etch); font-family: var(--mono); font-size: 12px;
+    padding: 8px 12px; width: 230px;
+  }
+  #search:focus { outline: none; border-color: var(--index); }
+  #search::placeholder { color: var(--etch-dim); }
+
+  .node { cursor: pointer; }
+  .node circle { fill: var(--node-fill); stroke-width: 1.6; transition: stroke-width 0.15s; }
+  .node:hover circle { stroke-width: 3; }
+  .node:focus-visible circle { stroke-width: 3.5; }
+  .node.n-repo circle, .node.n-class circle { stroke: var(--index); }
+  .node.n-module circle, .node.n-variable circle { stroke: var(--coating); filter: var(--glint); }
+  .node.n-function circle, .node.n-method circle { stroke: var(--dof); }
+  .node.n-interface circle, .node.n-type circle, .node.n-enum circle { stroke: var(--etch-dim); }
+  .node.unused circle { stroke-dasharray: 3 3; opacity: 0.75; }
+  .node.unused text { font-style: italic; }
+  .node text {
+    fill: var(--etch); font-family: var(--mono); pointer-events: none;
+    paint-order: stroke; stroke: var(--halo); stroke-width: 2.5px;
+    stroke-linejoin: round; stroke-linecap: round;
+  }
+  .node .chev { fill: var(--etch-dim); stroke: none; }
+  .hull { fill: var(--etch-faint); fill-opacity: 0.1; stroke: var(--etch-faint);
+    stroke-opacity: 0.4; stroke-width: 1; }
+  .hull-label {
+    font-family: var(--disp); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.14em; fill: var(--etch-dim); text-transform: uppercase;
+  }
+  .node .hubring { fill: none; stroke: var(--index); stroke-width: 1; opacity: 0.9; }
+  .link { stroke: var(--etch-faint); stroke-opacity: 0.8; fill: none; stroke-width: 1.2;
+    transition: opacity 0.15s; }
+  .node { transition: opacity 0.15s; }
+  .dimmed { opacity: 0.15; }
+  .node.pulse circle { stroke: var(--index) !important; stroke-width: 4; }
+  .link.inferred { stroke-dasharray: 4 4; }
+  .link.call { stroke: var(--dof); stroke-opacity: 0.9; stroke-width: 1.5; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #detail, body { transition: none; }
+    .stop .tick, .node circle { transition: none; }
+  }
+  @media (max-width: 900px) {
+    #bottombar { flex-direction: column-reverse; align-items: center; padding: 0 12px 16px; }
+    #bb-spacer { display: none; }
+    #palette {
+    position: absolute; top: 15vh; left: 50%; transform: translateX(-50%);
+    z-index: 20; width: min(480px, 90vw);
+    background: var(--plate-glass); border: 1px solid var(--index);
+  }
+  #pal-input {
+    width: 100%; background: none; border: none; border-bottom: 1px solid var(--etch-faint);
+    color: var(--etch); font-family: var(--mono); font-size: 14px; padding: 14px 16px;
+  }
+  #pal-input:focus { outline: none; }
+  #pal-list { list-style: none; max-height: 40vh; overflow-y: auto; }
+  #pal-list li { padding: 10px 16px; cursor: pointer; display: flex; gap: 10px; align-items: baseline; }
+  #pal-list li .k { font-family: var(--disp); font-size: 9px; letter-spacing: 0.14em;
+    color: var(--etch-dim); text-transform: uppercase; flex: none; width: 62px; }
+  #pal-list li .n { color: var(--etch); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #pal-list li .s { color: var(--etch-dim); font-size: 11px; margin-left: auto;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
+  #pal-list li.sel { background: var(--index); }
+  #pal-list li.sel .n, #pal-list li.sel .k, #pal-list li.sel .s { color: var(--index-ink); }
+  #pal-hint { cursor: pointer; }
+  #legend { max-width: 100%; text-align: center; }
+  }
+  @media (max-width: 640px) {
+    #detail { width: 86vw; }
+    #search { width: 130px; left: auto; right: 16px; transform: none; }
+    #plate .sub { display: none; }
+    .stop { padding: 0 12px; }
+    .stop .crumb { max-width: 76px; }
+    #palette {
+    position: absolute; top: 15vh; left: 50%; transform: translateX(-50%);
+    z-index: 20; width: min(480px, 90vw);
+    background: var(--plate-glass); border: 1px solid var(--index);
+  }
+  #pal-input {
+    width: 100%; background: none; border: none; border-bottom: 1px solid var(--etch-faint);
+    color: var(--etch); font-family: var(--mono); font-size: 14px; padding: 14px 16px;
+  }
+  #pal-input:focus { outline: none; }
+  #pal-list { list-style: none; max-height: 40vh; overflow-y: auto; }
+  #pal-list li { padding: 10px 16px; cursor: pointer; display: flex; gap: 10px; align-items: baseline; }
+  #pal-list li .k { font-family: var(--disp); font-size: 9px; letter-spacing: 0.14em;
+    color: var(--etch-dim); text-transform: uppercase; flex: none; width: 62px; }
+  #pal-list li .n { color: var(--etch); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #pal-list li .s { color: var(--etch-dim); font-size: 11px; margin-left: auto;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
+  #pal-list li.sel { background: var(--index); }
+  #pal-list li.sel .n, #pal-list li.sel .k, #pal-list li.sel .s { color: var(--index-ink); }
+  #pal-hint { cursor: pointer; }
+  #legend { font-size: 10px; padding: 8px 10px; }
+  }
+</style>
+</head>
+<body>
+<div id="canvas-wrap"><svg id="svg" role="application" aria-label="Zoomable map of your system"></svg></div>
+<span class="bracket tl"></span><span class="bracket tr"></span>
+<span class="bracket bl"></span><span class="bracket br"></span>
+
+<div id="plate">
+  <div>
+    <h1>repo<em>lens</em></h1>
+    <div class="sub" id="groupname"></div>
+  </div>
+  <button id="pal-hint" aria-label="Open jump palette" style="background:none;border:1px solid var(--etch-faint);color:var(--etch-dim);font-family:var(--mono);font-size:11px;padding:6px 9px;cursor:pointer">⌘K</button>
+  <div id="theme-seg" role="group" aria-label="Theme">
+    <button type="button" data-t="dark" aria-pressed="false">BARREL</button>
+    <button type="button" data-t="light" aria-pressed="false">GLASS</button>
+  </div>
+</div>
+
+<button id="parent" aria-label="Go up one level">
+  <span class="arrow">↑</span>
+  <span><span class="lvl" id="p-lvl"></span><span class="name" id="p-name"></span></span>
+</button>
+
+<input id="search" type="text" placeholder="Filter this level" aria-label="Filter nodes at this level">
+
+<div id="palette" role="dialog" aria-label="Jump to anything" style="display:none">
+  <input id="pal-input" type="text" placeholder="Jump to a repo, file, or symbol" aria-label="Search everything">
+  <ul id="pal-list"></ul>
+</div>
+
+<aside id="detail" aria-live="polite">
+  <button class="close-btn" id="detail-close" aria-label="Close readout">✕</button>
+  <div class="eyebrow" id="d-kind"></div>
+  <h2 id="d-title"></h2>
+  <dl id="d-meta"></dl>
+</aside>
+
+<div id="empty" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  z-index:8; text-align:center; color:var(--etch-dim); font-size:12px; max-width:320px; line-height:1.7;
+  background:var(--plate-glass); border:1px solid var(--etch-faint); padding:16px 20px;">
+  Nothing indexed in this repo yet.<br>
+  repolens reads 21 languages today. Other languages show an empty view until their extractor lands.
+</div>
+<div id="bottombar">
+  <div id="legend" aria-hidden="true"></div>
+  <nav id="scale" aria-label="Zoom depth"></nav>
+  <div id="bb-spacer" style="width:340px; flex:none"></div>
+</div>
+
+<script>
+window.REPOLENS_DATA = /*__DATA__*/null;
+</script>
+<script>
+(function () {
+  const DATA = window.REPOLENS_DATA;
+  const STOPS = [
+    { lvl: 0, lbl: "GROUP" },
+    { lvl: 2, lbl: "MODULE" },
+    { lvl: 3, lbl: "SYMBOL" },
+  ];
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ── theme ──
+  const root = document.documentElement;
+  let theme = root.getAttribute("data-theme") || "dark";
+  const segButtons = document.querySelectorAll("#theme-seg button");
+  function applyTheme() {
+    root.setAttribute("data-theme", theme);
+    segButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === theme)));
+  }
+  segButtons.forEach((b) => b.addEventListener("click", () => { theme = b.dataset.t; applyTheme(); }));
+  applyTheme();
+
+  const graphs = {};
+  DATA.graphs.forEach((g) => (graphs[g.repo] = g));
+
+  let path = [];
+  let filter = "";
+  let currentNodes = [];
+
+  const svg = d3.select("#svg");
+  const zoomLayer = svg.append("g");
+  const zoom = d3.zoom().scaleExtent([0.3, 4]).on("zoom", (e) => zoomLayer.attr("transform", e.transform));
+  svg.call(zoom).on("dblclick.zoom", null);
+
+  document.getElementById("groupname").textContent =
+    DATA.manifest.group + " · " + DATA.manifest.repos.length + " repos";
+
+  function currentLevel() { return path.length === 0 ? 0 : path.length === 1 ? 2 : 3; }
+
+  function navigate(newPath) {
+    path = newPath; filter = "";
+    document.getElementById("search").value = "";
+    closeDetail(); render();
+  }
+  function descend(node) {
+    if (node.kind === "repo") navigate([node.id]);
+    else if (node.kind === "module") navigate([path[0], node.id]);
+  }
+  function ascend() { if (path.length > 0) navigate(path.slice(0, -1)); }
+  document.getElementById("parent").addEventListener("click", ascend);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeDetail(); ascend(); } });
+
+  function nodesAndLinks() {
+    const f = filter.toLowerCase();
+    if (path.length === 0) {
+      const nodes = DATA.manifest.repos
+        .filter((r) => !f || r.name.toLowerCase().includes(f))
+        .map((r) => ({
+          id: r.name, label: r.name, kind: "repo",
+          r: 26 + Math.sqrt(r.symbolCount) * 4, x: r.x, y: r.y,
+          meta: { languages: (r.languages && r.languages.length ? r.languages.join(', ') : 'none supported'), modules: r.moduleCount, symbols: r.symbolCount },
+        }));
+      const ids = new Set(nodes.map((n) => n.id));
+      const links = (DATA.manifest.edges || [])
+        .filter((e) => ids.has(e.from) && ids.has(e.to))
+        .map((e) => ({ source: e.from, target: e.to, inferred: e.confidence === "inferred" }));
+      return { nodes, links };
+    }
+    if (path.length === 1) {
+      const g = graphs[path[0]];
+      const nbLabel = (n) => (g.neighborhoodLabels && g.neighborhoodLabels[n] != null)
+        ? g.neighborhoodLabels[n] : "neighborhood " + n;
+      const nodes = g.modules
+        .filter((m) => !f || m.path.toLowerCase().includes(f))
+        .map((m) => ({
+          id: m.id, label: m.path.split("/").pop(), full: m.path, kind: "module",
+          r: 12 + Math.sqrt(m.symbolCount) * 5, x: m.x, y: m.y,
+          n: m.neighborhood, hub: !!m.hub,
+          meta: { path: m.path, symbols: m.symbolCount, lines: m.loc,
+            neighborhood: m.neighborhood != null ? nbLabel(m.neighborhood) : "n/a",
+            "import degree": m.degree ?? 0, hub: m.hub ? "yes, changes ripple widest here" : "no" },
+        }));
+      const ids = new Set(nodes.map((n) => n.id));
+      const links = g.edges
+        .filter((e) => e.kind === "imports" && ids.has(e.from) && ids.has(e.to))
+        .map((e) => ({ source: e.from, target: e.to, inferred: e.confidence === "inferred" }));
+      return { nodes, links };
+    }
+    const g = graphs[path[0]];
+    const moduleId = path[1];
+    const nodes = g.symbols
+      .filter((s) => s.module === moduleId)
+      .filter((s) => !f || s.name.toLowerCase().includes(f))
+      .map((s) => ({
+        id: s.id, label: s.name, kind: s.kind,
+        r: s.kind === "class" ? 18 : 10, x: s.x, y: s.y,
+        meta: {
+          kind: s.kind, line: s.line, exported: s.exported ? "yes" : "no",
+          references: s.refCount === 0 ? "none found in this repo" : (s.refCount ?? "n/a"),
+        },
+        parent: s.parent,
+        unused: s.refCount === 0,
+      }));
+    const ids = new Set(nodes.map((n) => n.id));
+    const links = [];
+    nodes.forEach((n) => {
+      if (n.parent && ids.has(n.parent)) links.push({ source: n.parent, target: n.id, inferred: false });
+    });
+    g.edges
+      .filter((e) => e.kind === "calls" && ids.has(e.from) && ids.has(e.to))
+      .forEach((e) => links.push({ source: e.from, target: e.to, inferred: false, call: true }));
+    g.edges
+      .filter((e) => (e.kind === "extends" || e.kind === "implements") && ids.has(e.from))
+      .forEach((e) => {
+        const target = g.symbols.find((s) => s.name === e.to);
+        if (target && ids.has(target.id)) links.push({ source: e.from, target: target.id, inferred: true });
+      });
+    return { nodes, links };
+  }
+
+  function arc(d) {
+    const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+    const dr = Math.sqrt(dx * dx + dy * dy) * 2.2;
+    return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+  }
+
+  function insets() {
+    const plate = document.getElementById("plate").getBoundingClientRect();
+    const parentCard = document.getElementById("parent");
+    const pc = parentCard.style.display !== "none" ? parentCard.getBoundingClientRect().bottom : 0;
+    const bar = document.getElementById("bottombar").getBoundingClientRect();
+    return { top: Math.max(plate.bottom, pc) + 14, bottom: window.innerHeight - bar.top + 14 };
+  }
+
+  function fitToView(nodes) {
+    if (!nodes.length) return;
+    const pad = 60;
+    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
+    const minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad;
+    const minY = Math.min(...ys) - pad, maxY = Math.max(...ys) + pad;
+    const w = window.innerWidth, h = window.innerHeight;
+    const ins = insets();
+    const availH = h - ins.top - ins.bottom;
+    const scale = Math.min(2, Math.max(0.3, Math.min(w / (maxX - minX), availH / (maxY - minY))));
+    const tx = w / 2 - scale * (minX + maxX) / 2;
+    const ty = ins.top + availH / 2 - scale * (minY + maxY) / 2;
+    svg.transition().duration(reduced ? 0 : 350)
+      .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+  }
+
+  function render() {
+    const { nodes, links } = nodesAndLinks();
+    currentNodes = nodes;
+    zoomLayer.selectAll("*").remove();
+        svg.call(zoom.transform, d3.zoomIdentity);
+
+    const w = window.innerWidth, h = window.innerHeight;
+
+    // neighborhood hulls sit under everything
+    const nbIds = [...new Set(nodes.filter((d) => d.n != null).map((d) => d.n))].sort((a, b) => a - b);
+    const hullLayer = zoomLayer.append("g");
+    const showHulls = currentLevel() === 2 && nbIds.length > 1;
+    const g0 = path.length === 1 ? graphs[path[0]] : null;
+    const hullPath = hullLayer.selectAll("path").data(showHulls ? nbIds : []).join("path").attr("class", "hull");
+    const hullText = hullLayer.selectAll("text").data(showHulls ? nbIds : []).join("text")
+      .attr("class", "hull-label")
+      .text((n) => {
+        const lbl = g0 && g0.neighborhoodLabels && g0.neighborhoodLabels[n] != null
+          ? g0.neighborhoodLabels[n] : "neighborhood " + n;
+        const dup = g0 && Object.values(g0.neighborhoodLabels || {}).filter((v) => v === lbl).length > 1;
+        return dup ? lbl + " · " + (Number(n) + 1) : lbl;
+      });
+    function drawHulls() {
+      if (!showHulls) return;
+      const pad = 22;
+      hullPath.attr("d", (n) => {
+        const pts = [];
+        for (const d of nodes) {
+          if (d.n !== n || d.x == null) continue;
+          const R = d.r + pad;
+          for (let a = 0; a < 8; a++) pts.push([d.x + R * Math.cos(a * Math.PI / 4), d.y + R * Math.sin(a * Math.PI / 4)]);
+        }
+        if (pts.length < 3) return "";
+        const hull = d3.polygonHull(pts);
+        return hull ? "M" + hull.join("L") + "Z" : "";
+      });
+      hullText
+        .attr("x", (n) => d3.mean(nodes.filter((d) => d.n === n), (d) => d.x))
+        .attr("y", (n) => (d3.min(nodes.filter((d) => d.n === n), (d) => d.y - d.r) ?? 0) - 30);
+    }
+
+    const link = zoomLayer.append("g").selectAll("path").data(links).join("path")
+      .attr("class", (d) => "link" + (d.inferred ? " inferred" : "") + (d.call ? " call" : ""));
+
+    const node = zoomLayer.append("g").selectAll("g").data(nodes).join("g")
+      .attr("class", (d) => "node n-" + d.kind + (d.unused ? " unused" : ""))
+      .attr("tabindex", 0)
+      .style("opacity", reduced ? 1 : 0);
+
+    if (!reduced) node.transition().duration(280).delay((d, i) => i * 14).style("opacity", 1);
+
+    node.append("circle").attr("r", (d) => d.r);
+    node.filter((d) => d.hub).append("circle").attr("class", "hubring").attr("r", (d) => d.r + 6);
+
+    node.filter((d) => d.kind === "repo" || d.kind === "module")
+      .append("text").attr("class", "chev")
+      .attr("text-anchor", "middle").attr("dy", 4).attr("font-size", 11)
+      .text("↓");
+
+    node.append("text")
+      .attr("text-anchor", "middle")
+      .attr("dy", (d) => d.r + 15)
+      .attr("font-size", (d) => (d.kind === "repo" ? 13 : 11))
+      .text((d) => d.label);
+
+    const activate = (e, d) => {
+      e.stopPropagation();
+      if (d.kind === "repo" || d.kind === "module") descend(d);
+      else openDetail(d);
+    };
+    node.on("click", activate);
+    node.on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") activate(e, d); });
+    svg.on("click", closeDetail);
+    svg.on("dblclick", ascend);
+
+    // positions are precomputed at extract time; older graphs without them
+    // fall back to a deterministic grid so nothing renders at 0,0
+    nodes.forEach((d, i) => {
+      if (d.x == null || d.y == null) {
+        const cols = Math.ceil(Math.sqrt(nodes.length));
+        d.x = 200 + (i % cols) * 140;
+        d.y = 200 + Math.floor(i / cols) * 140;
+      }
+    });
+    const byId = new Map(nodes.map((d) => [d.id, d]));
+    links.forEach((l) => { l.source = byId.get(l.source) ?? l.source; l.target = byId.get(l.target) ?? l.target; });
+
+    function updatePositions() {
+      link.attr("d", arc);
+      node.attr("transform", (d) => `translate(${d.x},${d.y})`);
+      drawHulls();
+    }
+    node.call(d3.drag()
+      .on("drag", (e, d) => { d.x = e.x; d.y = e.y; updatePositions(); }));
+    updatePositions();
+    fitToView(nodes);
+
+    renderParent(); renderScale(); renderLegend(nodes);
+  }
+
+  function renderParent() {
+    const card = document.getElementById("parent");
+    if (path.length === 0) { card.style.display = "none"; return; }
+    card.style.display = "flex";
+    if (path.length === 1) {
+      document.getElementById("p-lvl").textContent = "BACK TO GROUP";
+      document.getElementById("p-name").textContent = DATA.manifest.group;
+    } else {
+      document.getElementById("p-lvl").textContent = "BACK TO MODULES";
+      document.getElementById("p-name").textContent = path[0];
+    }
+  }
+
+  // the focus scale: current depth marked by the red index
+  function renderScale() {
+    const scaleEl = document.getElementById("scale");
+    scaleEl.innerHTML = "";
+    const lvl = currentLevel();
+    STOPS.forEach((s) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "stop" + (s.lvl === lvl ? " active" : s.lvl < lvl ? " reachable" : "");
+      const tick = document.createElement("span"); tick.className = "tick";
+      const lbl = document.createElement("span"); lbl.className = "lbl"; lbl.textContent = s.lbl;
+      btn.append(tick, lbl);
+      if (s.lvl === 2 && path[0]) {
+        const c = document.createElement("span"); c.className = "crumb"; c.textContent = path[0];
+        btn.appendChild(c);
+      }
+      if (s.lvl === 3 && path[1]) {
+        const c = document.createElement("span"); c.className = "crumb";
+        c.textContent = path[1].split(":")[1].split("/").pop();
+        btn.appendChild(c);
+      }
+      if (s.lvl < lvl) {
+        btn.setAttribute("aria-label", "Go to " + s.lbl.toLowerCase() + " level");
+        btn.addEventListener("click", () => navigate(s.lvl === 0 ? [] : [path[0]]));
+      } else {
+        btn.disabled = s.lvl > lvl;
+        if (s.lvl === lvl) btn.setAttribute("aria-current", "true");
+      }
+      scaleEl.appendChild(btn);
+    });
+  }
+
+  function renderLegend(nodes) {
+    const kinds = [...new Set(nodes.map((n) => n.kind))];
+    const colorVar = (k) =>
+      k === "repo" || k === "class" ? "--index" :
+      k === "module" || k === "variable" ? "--coating" :
+      k === "function" || k === "method" ? "--dof" : "--etch-dim";
+    document.getElementById("legend").innerHTML =
+      kinds.map((k) => `<div><span class="swatch" style="background:var(${colorVar(k)})"></span>${k}</div>`).join("") +
+      (currentLevel() === 0 ? '<div style="margin-top:6px">Cross-repo edges arrive in v0.3.</div>' : "") +
+      (currentLevel() === 3 ? '<div style="margin-top:6px">Gold lines are calls: who actually invokes whom.</div>' : "") +
+      (currentLevel() === 3 && nodes.some((n) => n.unused) ? '<div style="margin-top:6px">┄ dashed: no references found in this repo</div>' : "") +
+      (currentLevel() === 2 && nodes.some((n) => n.hub) ? '<div style="margin-top:6px">◎ red outer ring: hub, changes ripple widest here</div>' : "") +
+      (currentLevel() === 2 && nodes.some((n) => n.n != null) ? '<div style="margin-top:6px">Shaded areas are neighborhoods: files that import each other more than the rest.</div>' : "") +
+      '<div style="margin-top:6px">Tap a node to open it. Double-tap the canvas to back out.</div>';
+  }
+
+  function openDetail(d) {
+    document.getElementById("d-kind").textContent = d.kind;
+    document.getElementById("d-title").textContent = d.full || d.label;
+    document.getElementById("d-meta").innerHTML = Object.entries(d.meta || {})
+      .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+    document.getElementById("detail").classList.add("open");
+  }
+  function closeDetail() { document.getElementById("detail").classList.remove("open"); }
+  document.getElementById("detail-close").addEventListener("click", closeDetail);
+
+  // ── command palette ──
+  const palette = document.getElementById("palette");
+  const palInput = document.getElementById("pal-input");
+  const palList = document.getElementById("pal-list");
+  let palIdx = 0;
+  const palEntries = [];
+  for (const r of DATA.manifest.repos) {
+    palEntries.push({ kind: "repo", name: r.name, sub: "", nav: [], focus: r.name });
+  }
+  for (const g of DATA.graphs) {
+    for (const m of g.modules) palEntries.push({ kind: "module", name: m.path.split("/").pop(), sub: g.repo, nav: [g.repo], focus: m.id });
+    for (const sy of g.symbols) palEntries.push({ kind: sy.kind, name: sy.name, sub: g.repo + " · " + (g.modules.find((m) => m.id === sy.module)?.path ?? ""), nav: [g.repo, sy.module], focus: sy.id });
+  }
+  function palOpen() { palette.style.display = "block"; palInput.value = ""; palRender(""); palInput.focus(); }
+  function palClose() { palette.style.display = "none"; }
+  function palRender(q) {
+    const ql = q.toLowerCase();
+    const hits = ql
+      ? palEntries.filter((e) => e.name.toLowerCase().includes(ql)).slice(0, 12)
+      : palEntries.slice(0, 12);
+    palIdx = 0;
+    palList.innerHTML = hits.map((e, i) =>
+      `<li data-i="${i}" class="${i === 0 ? "sel" : ""}"><span class="k">${e.kind}</span><span class="n">${e.name}</span><span class="s">${e.sub}</span></li>`).join("");
+    palList.querySelectorAll("li").forEach((li) => {
+      li.addEventListener("click", () => palGo(hits[Number(li.dataset.i)]));
+    });
+    palList._hits = hits;
+  }
+  function palGo(entry) {
+    if (!entry) return;
+    palClose();
+    navigate(entry.nav);
+    // fly the camera to the target after the level renders
+    requestAnimationFrame(() => {
+      const target = currentNodes.find((n) => n.id === entry.focus);
+      if (!target) return;
+      const w = window.innerWidth, hgt = window.innerHeight;
+      svg.transition().duration(reduced ? 0 : 450).call(
+        zoom.transform,
+        d3.zoomIdentity.translate(w / 2 - 1.3 * target.x, hgt / 2 - 1.3 * target.y).scale(1.3));
+      const el = zoomLayer.selectAll(".node").filter((d) => d.id === entry.focus);
+      el.classed("pulse", true);
+      setTimeout(() => el.classed("pulse", false), 1600);
+    });
+  }
+  palInput.addEventListener("input", (e) => palRender(e.target.value));
+  palInput.addEventListener("keydown", (e) => {
+    const hits = palList._hits ?? [];
+    if (e.key === "ArrowDown") { palIdx = Math.min(palIdx + 1, hits.length - 1); }
+    else if (e.key === "ArrowUp") { palIdx = Math.max(palIdx - 1, 0); }
+    else if (e.key === "Enter") { palGo(hits[palIdx]); return; }
+    else if (e.key === "Escape") { palClose(); return; }
+    else return;
+    e.preventDefault();
+    palList.querySelectorAll("li").forEach((li, i) => li.classList.toggle("sel", i === palIdx));
+  });
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); palOpen(); }
+  });
+  document.getElementById("pal-hint").addEventListener("click", palOpen);
+  palette.addEventListener("click", (e) => { if (e.target === palette) palClose(); });
+
+  document.getElementById("search").addEventListener("input", (e) => { filter = e.target.value; render(); });
+  let resizeTimer;
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 200); });
+
+  render();
+})();
+</script>
+</body>
+</html>
