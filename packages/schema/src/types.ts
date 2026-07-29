@@ -1,5 +1,5 @@
 /**
- * repolens graph schema v0.1
+ * gitatlas graph schema v0.1
  *
  * Design constraints:
  * - Language-agnostic: extractors for any language emit this same shape.
@@ -57,6 +57,12 @@ export interface ModuleNode {
   repo: string;
   symbolCount: number;
   loc: number;
+  /** neighborhood id from deterministic modularity clustering (absent pre-0.6 graphs) */
+  neighborhood?: number;
+  /** distinct import/call neighbors */
+  degree?: number;
+  /** unusually high degree: where changes ripple widest */
+  hub?: boolean;
   /** layout coordinates, baked in at extract time (absent pre-0.8 graphs) */
   x?: number;
   y?: number;
@@ -75,9 +81,19 @@ export interface RepoGraph {
   root: string;
   language: string[];
   generatedAt: string;
+  /**
+   * sha256 over the sorted (repo-relative path, content sha256) pairs of
+   * every file that entered this graph. `gitatlas check` re-walks the source
+   * and compares against this to detect a stale graph before anyone (a human,
+   * an agent) trusts its file:line data. Additive; absent in older graphs,
+   * which `check` reports as unknown and treats as stale.
+   */
+  sourceFingerprint?: string;
   modules: ModuleNode[];
   symbols: SymbolNode[];
   edges: Edge[];
+  /** neighborhood id -> human label (deepest shared directory) */
+  neighborhoodLabels?: Record<string, string>;
 }
 
 export interface GroupManifest {
@@ -89,6 +105,10 @@ export interface GroupManifest {
     graphFile: string;
     moduleCount: number;
     symbolCount: number;
+    languages?: string[];
+    /** layout coordinates for the group view, baked in at extract time */
+    x?: number;
+    y?: number;
   }[];
   /** cross-repo edges, stitched in v0.3; empty in v0.1 */
   edges: Edge[];

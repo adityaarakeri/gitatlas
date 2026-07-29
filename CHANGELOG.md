@@ -1,16 +1,39 @@
 # Changelog
 
 ## Unreleased
+- Renamed from repolens to gitatlas ahead of the first release. The command is `gitatlas`, the entry point is `bin/gitatlas.js`, the default output directory is `.gitatlas`, the playground cache is `.gitatlas-site`, and the playground environment variables are `GITATLAS_SITE_*`. A hard cut with no aliases: nothing had been published under the old name, so there was nothing to migrate. Existing local `.repolens` maps are not read; delete them and re-extract
+- New `gitatlas brief` command (`packages/brief`): compresses the map into a token-budgeted markdown digest for agent context, per repo: hubs, neighborhoods, largest modules, key exports with file:line. Detail sections drop to fit `--budget` and every cut is announced in the text; pure builder in `brief.ts`, I/O in `cli.ts`, mirroring the scoper split
+- New `gitatlas mcp` command (`packages/mcp`): a dependency-free MCP server over stdio with five tools: `brief`, `scope`, `find_symbol`, `module_info`, `check_freshness`. Reloads graphs when group.json changes on disk; re-verifies source fingerprints (60s cache) before every tool call and flags stale repos inside each result, so an agent never consumes unmarked stale file:line data
+- Shared `graphFreshness` helper (`packages/extractor/src/freshness.ts`) validates existing graphs against their recorded source roots; `parseGitmodules` moved there from the extract CLI
+- Schema types now declare what graphs already carry: `neighborhood`/`degree`/`hub` on modules, `neighborhoodLabels` on graphs, `languages` and layout coordinates on manifest repo entries. Additive alignment, no version bump
+- Nine new tests (brief determinism, budget trimming, filtering, staleness flagging; MCP handshake, all tools, freshness gate flip)
+- Staleness detection: every graph now records a `sourceFingerprint`, a sha256 over the sorted (path, content hash) pairs of the files that entered it. Content-based, so the same tree fingerprints identically on any machine; additive schema field, no version bump
+- New `gitatlas check <group-folder>` command: re-walks the source with the same discovery rules and compares fingerprints against the existing map. Per-repo status (fresh / stale / new / removed / unknown), `--json` for scripts and agents, exit 0 fresh / 1 stale, no parsing and no writes
+- New `extract --if-stale` flag: runs the same comparison first and skips extraction entirely when nothing changed, so CI jobs and agent hooks can run it unconditionally before reading the graphs
+- Three freshness additions to the suite: a fingerprint unit test and an end-to-end check / --if-stale lifecycle test
+- Command surface wired everywhere the others are: `check`, `brief`, and `mcp` appear in `gitatlas --help` and as npm scripts (`npm run check`, `npm run brief`, `npm run mcp`); README gains a command reference table, a "Knowing when the map is stale" section, and a "Feeding the map to a coding agent" section, with MCP moved off the roadmap
+- Extraction crash fixed: a TS/JS relative import of a non-code or missing file (`import "./globals.css"` in any Next.js app) emitted an edge to a module that never exists, and layout died on it (d3 forceLink "node not found"), taking the whole build down. The resolver now only resolves to files the extractor indexes; everything else becomes a `pkg:` edge, same as the tree-sitter languages: the statement is a fact, its target is not
+- TS/JS import resolution widened to match what the extractor indexes: `.jsx`, `.mjs`, `.cjs`, `index.tsx` / `index.jsx` candidates, and ESM-style `./x.js` specifiers mapping to `x.ts` on disk
+- Merge-time integrity guard: any import edge whose target is neither an indexed module nor a `pkg:` node is dropped with a warning, so a future extractor bug degrades one edge instead of crashing the build
+- Playground clones with `core.longpaths=true`: repos with deep trees exceed Windows' 260-char path limit and abort the checkout; ignored on other platforms
+- Regression test for dangling import targets (css, missing file, `.jsx`); suite now 72
+- Playground deployment recipes: `Dockerfile` (Node 22 + git, cache at `/data` for volume mounts), `render.yaml` one-click free-tier Blueprint, and `fly.toml` scale-to-zero config, with a README section comparing the cheap options
+- Hosted playground (`packages/site`, `npm run site`): a dependency-free Node server that maps any public GitHub repo at `/gh/owner/repo`. Shallow clone, size cap, extraction in an isolated child process (crash isolation, per-build WASM memory reclaim, inherits the Node 24 flag handling), maps cached by commit SHA with LRU eviction, landing page with recent maps, build-status polling. Pure logic in `service.ts` with 13 tests; I/O in `server.ts`, mirroring the scoper split
+- New landing page: the entire system as one tidy tree, group -> repos -> directories -> files on a single page. Built from data already in the graph files, so picking it up only needs the HTML regenerated, not a re-extraction
+- Every tree node acts: a file opens its symbol view, repos and directories fold and unfold on click, and the -> arrow beside a repo or directory dives into its module map (pre-filtered to the directory's path). All of it keyboard-reachable
+- Inline badges on tree nodes: languages and symbol count on repos, symbol count on files, file count on directories
+- Folding keeps the current pan and zoom, fold state survives trips into the deeper views, and the filter box prunes the tree to matching branches while overriding folds so a match is never hidden
+- The depth scale gains a TREE stop ahead of GROUP / MODULE / SYMBOL, and backing out of the group view now returns to the tree
 - Node 24 crash fixed: V8's turboshaft wasm pipeline fatally zone-OOMs while compiling tree-sitter grammars (nodejs/node#63421), killing extraction mid-run. The bin entry re-execs node with `--liftoff-only` on Node 24+, npm test runs single-process with the flag, and the engine warns library consumers who run without it. Engines bumped to Node >=22 (20 is EOL); CI now tests 22 and 24
 - WASM heap hygiene: per-file trees and parsers are now disposed after extraction; they live outside the JS heap where the GC cannot reclaim them
 - `LangDef` now declares the `calls` and `textImports` hooks it already used at runtime, and the schema declares the baked layout coordinates (`x`/`y`) on modules and symbols
-- README corrections: the viewer's webfonts still load from Google Fonts (d3 is vendored, the map itself renders offline), roadmap reflects what has shipped, and the npm name `repolens` is noted as taken
+- README corrections: the viewer's webfonts still load from Google Fonts (d3 is vendored, the map itself renders offline), roadmap reflects what has shipped, and the npm name `gitatlas` is noted as taken
 - Build-artifact pruning hardened: package-metadata dirs whose name carries the package prefix (`mypkg.egg-info`, `foo-1.0.dist-info`, `.egg`) are now skipped by suffix, plus `htmlcov` and `site-packages`; a single `shouldSkipDir` predicate governs both file-walking and repo discovery
 - New `--ignore <glob>` extract flag (repeatable) for project-specific pruning, matched against each entry's name and repo-relative path; supports `*`, `?`, `**`, and trailing `/​**` that also matches the directory itself
 - Three new tests covering artifact-dir skipping, custom-glob pruning, and the glob compiler; ordered ahead of the grammar-heavy polyglot test
 
 ## 0.9.0
-- Call edges, the missing spine since v0.1: real invocation edges between symbols for 13 languages (TS, JS, Python, Go, Java, Ruby, C, C++, C#, PHP, Rust, Kotlin, Lua, Elixir)
+- Call edges, the missing spine since v0.1: real invocation edges between symbols for 14 languages (TS, JS, Python, Go, Java, Ruby, C, C++, C#, PHP, Rust, Kotlin, Lua, Elixir)
 - Honesty rule enforced in the resolver: same-module match, then unique repo-wide match, ambiguous callees dropped rather than guessed; every call edge ships with resolved confidence
 - Calls attribute to their enclosing symbol in both engines, including TS arrow functions and constructor calls, Go receiver methods through selectors, and Elixir defs inside their module
 - Cross-module call traffic now feeds neighborhood clustering and hub detection alongside imports, so hubs mean "leaned on at runtime" rather than "mentioned in imports"
@@ -42,7 +65,7 @@
 - Hub detection: degree-based flagging (mean plus two standard deviations, floored) with a red outer ring and plain-language explanation in the readout
 - Honest algorithm naming: single-level Louvain-style local moving, documented as such; flawed aggregation was removed rather than shipped after it failed the barbell test
 - Analysis lives in its own package of pure functions with 7 tests (barbell split, input-order determinism, stable renumbering, label prefixes, hub thresholds); full suite now 30 tests
-- Global bin: `repolens extract .` and `repolens scope ...` work as commands after global install
+- Global bin: `gitatlas extract .` and `gitatlas scope ...` work as commands after global install
 - examples/github-action.yml: drop-in CI recipe that regenerates the map on every push
 
 ## 0.5.0

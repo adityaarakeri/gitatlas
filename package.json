@@ -1,5 +1,5 @@
 {
-  "name": "repolens",
+  "name": "gitatlas",
   "version": "0.9.0",
   "private": true,
   "description": "Multi-repo architecture maps you can zoom into. C4-from-code, open source.",
@@ -8,13 +8,25 @@
     "packages/*"
   ],
   "scripts": {
-    "extract": "node bin/repolens.js extract",
-    "scope": "node bin/repolens.js scope",
-    "test": "node --liftoff-only --test --test-isolation=none --import tsx \"packages/scoper/test/*.test.ts\" \"packages/extractor/test/*.test.ts\" \"packages/analysis/test/*.test.ts\""
+    "extract": "node bin/gitatlas.js extract",
+    "check": "node bin/gitatlas.js check",
+    "brief": "node bin/gitatlas.js brief",
+    "mcp": "node bin/gitatlas.js mcp",
+    "scope": "node bin/gitatlas.js scope",
+    "site": "node bin/gitatlas.js site",
+    "test": "node --liftoff-only --test --test-isolation=none --import tsx \"packages/scoper/test/*.test.ts\" \"packages/extractor/test/*.test.ts\" \"packages/analysis/test/*.test.ts\" \"packages/site/test/*.test.ts\" \"packages/brief/test/*.test.ts\" \"packages/mcp/test/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"packages/**/*.ts\" bin/gitatlas.js --max-warnings=0",
+    "audit:prod": "npm audit --omit=dev --audit-level=high"
   },
   "devDependencies": {
+    "@types/node": "^22.20.1",
+    "eslint": "^9.39.5",
+    "eslint-plugin-n": "^17.24.0",
+    "globals": "^16.5.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.65.0"
   },
   "keywords": [
     "code-graph",
@@ -36,6 +48,6 @@
     "web-tree-sitter": "0.25.10"
   },
   "bin": {
-    "repolens": "bin/repolens.js"
+    "gitatlas": "bin/gitatlas.js"
   }
 }

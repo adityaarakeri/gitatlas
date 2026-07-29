@@ -1,5 +1,5 @@
 node_modules/
-.repolens/
+.gitatlas/
 viewer/data/
 .claude/settings.local.json
 .DS_Store

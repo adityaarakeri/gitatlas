@@ -8,13 +8,13 @@ import assert from "node:assert/strict";
 import * as path from "node:path";
 import * as fs from "node:fs";
 import * as os from "node:os";
-import { extractRepo, globToRegExp } from "../src/extract.ts";
+import { extractRepo, fingerprintFiles, globToRegExp } from "../src/extract.ts";
 
 const FIX = path.resolve(import.meta.dirname, "../../../fixtures");
 
 /** Build a throwaway python repo on disk; caller gets the root and a cleanup fn. */
 function scratchRepo(layout: Record<string, string>): { root: string; cleanup: () => void } {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "repolens-test-"));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "gitatlas-test-"));
   for (const [rel, body] of Object.entries(layout)) {
     const full = path.join(root, rel);
     fs.mkdirSync(path.dirname(full), { recursive: true });
@@ -26,6 +26,21 @@ function scratchRepo(layout: Record<string, string>): { root: string; cleanup: (
 function sym(g: Awaited<ReturnType<typeof extractRepo>>, name: string) {
   return g.symbols.find((s) => s.name === name);
 }
+
+test("fingerprintFiles: content-based, order-independent, change-sensitive", () => {
+  const { root, cleanup } = scratchRepo({
+    "src/a.py": "def a():\n    pass\n",
+    "src/b.py": "def b():\n    pass\n",
+  });
+  try {
+    const a = path.join(root, "src", "a.py");
+    const b = path.join(root, "src", "b.py");
+    const fp = fingerprintFiles(root, [a, b]);
+    assert.equal(fingerprintFiles(root, [b, a]), fp, "input order does not matter");
+    fs.writeFileSync(b, "def b():\n    return 1\n");
+    assert.notEqual(fingerprintFiles(root, [a, b]), fp, "a content change changes the fingerprint");
+  } finally { cleanup(); }
+});
 
 // Artifact-skipping tests run first: they use only python and no tree-sitter
 // grammar zoo, so they complete before the polyglot-lab test's memory spike.
@@ -110,6 +125,27 @@ test("typescript: functions, classes, methods, arrow functions", async () => {
   assert.ok(g.edges.some((e) => e.kind === "imports" && e.confidence === "resolved"));
 });
 
+test("typescript: relative imports of non-code or missing files never dangle", async () => {
+  const { root, cleanup } = scratchRepo({
+    "src/app.ts": 'import "./globals.css";\nimport { gone } from "./missing";\nimport { comp } from "./comp";\nexport function main() { comp(); }\n',
+    "src/globals.css": "body { margin: 0; }\n",
+    "src/comp.jsx": "export function comp() { return null; }\n",
+  });
+  try {
+    // before the fix this crashed in layout: d3 forceLink threw "node not
+    // found" on the edge to src/globals.css, which never becomes a module
+    const g = await extractRepo(root, "web");
+    const moduleIds = new Set(g.modules.map((m) => m.id));
+    for (const e of g.edges.filter((e) => e.kind === "imports")) {
+      assert.ok(e.to.startsWith("pkg:") || moduleIds.has(e.to), `import target exists: ${e.to}`);
+    }
+    assert.ok(g.edges.some((e) => e.to === "pkg:./globals.css"), "css import kept as a pkg: fact");
+    assert.ok(g.edges.some((e) => e.to === "pkg:./missing"), "unresolvable relative import kept as a pkg: fact");
+    assert.ok(g.edges.some((e) => e.kind === "imports" && e.to === "web:src/comp.jsx" && e.confidence === "resolved"),
+      ".jsx import resolves to its module");
+  } finally { cleanup(); }
+});
+
 test("python: underscore privacy, inheritance, import resolution", async () => {
   const g = await extractRepo(path.join(FIX, "py-analytics"), "py-analytics");
   assert.deepEqual(g.language, ["python"]);
@@ -161,6 +197,26 @@ test("mixed-language repo reports every language it found", async () => {
   // (single-language) asserting language list shape stays an array
   const g = await extractRepo(path.join(FIX, "shared-types"), "shared-types");
   assert.ok(Array.isArray(g.language));
+});
+
+test("resilience: a file that crashes a grammar scanner is skipped, not fatal", async () => {
+  // The tree-sitter-bash WASM scanner throws (not returns an error tree) on a
+  // `:(){` fork-bomb literal inside a case pattern. One such file must not
+  // abort the whole repo: the good file still extracts, the bad file survives
+  // as an empty module.
+  const { root, cleanup } = scratchRepo({
+    "ok.sh": "deploy() {\n  echo hi\n}\n",
+    "guard.sh": 'case "$cmd" in\n  *":(){"|*"fork bomb"*)\n    echo blocked\n    ;;\nesac\n',
+  });
+  try {
+    const g = await extractRepo(root, "resilience-fixture");
+    assert.ok(sym(g, "deploy"), "good shell file still extracted after the crash");
+    const guard = g.modules.find((m) => m.path === "guard.sh");
+    assert.ok(guard, "crashed file still recorded as a module");
+    assert.equal(guard!.symbolCount, 0, "crashed file has no symbols");
+  } finally {
+    cleanup();
+  }
 });
 
 test("unresolved imports become pkg: edges, never fake resolutions", async () => {

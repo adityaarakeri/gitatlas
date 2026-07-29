@@ -10,6 +10,7 @@
 import * as ts from "typescript";
 import { detectNeighborhoods, labelNeighborhoods, findHubs } from "../../analysis/src/analyze.js";
 import { computeLayout, neighborhoodAnchors } from "./layout.js";
+import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -70,6 +71,7 @@ function matchesIgnore(name: string, rel: string, ignore: WalkIgnore): boolean {
 export interface SymbolNode {
   id: string; name: string; kind: string; module: string;
   line: number; exported: boolean; refCount?: number; parent?: string;
+  x?: number; y?: number;
 }
 export interface ModuleNode {
   id: string; path: string; repo: string; symbolCount: number; loc: number;
@@ -88,6 +90,8 @@ export interface RepoGraph {
   generatedAt: string; modules: ModuleNode[]; symbols: SymbolNode[]; edges: Edge[];
   /** neighborhood id -> human label (deepest shared directory) */
   neighborhoodLabels?: Record<string, string>;
+  /** content hash of every file that entered this graph; see fingerprintFiles */
+  sourceFingerprint?: string;
 }
 
 const TS_EXTS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
@@ -112,6 +116,27 @@ export function walk(dir: string, files: string[] = [], exclude?: Set<string>, i
     }
   }
   return files;
+}
+
+/**
+ * One hash over the exact file set a walk produced: sha256 of the sorted
+ * (repo-relative path, content sha256) pairs. Content-based on purpose:
+ * mtimes differ across clones and machines, file bytes do not, so the same
+ * source tree fingerprints identically anywhere. Any edit, addition, or
+ * removal of an indexed file changes it, which is what `gitatlas check`
+ * compares to call a graph stale.
+ */
+export function fingerprintFiles(repoRoot: string, files: string[]): string {
+  const entries = files
+    .map((abs) => ({ abs, rel: path.relative(repoRoot, abs).split(path.sep).join("/") }))
+    .sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));
+  const h = crypto.createHash("sha256");
+  for (const { abs, rel } of entries) {
+    h.update(rel);
+    h.update("\0");
+    h.update(crypto.createHash("sha256").update(fs.readFileSync(abs)).digest());
+  }
+  return "sha256:" + h.digest("hex");
 }
 
 interface RawCall { from: string; callee: string; }
@@ -204,12 +229,23 @@ function extractTs(files: string[], repoRoot: string, repoName: string): Acc {
         }
       } else if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
         const spec = node.moduleSpecifier.text;
+        let resolved: string | null = null;
         if (spec.startsWith(".")) {
-          let resolved = path.posix.normalize(path.posix.join(path.posix.dirname(rel), spec));
-          for (const ext of ["", ".ts", ".tsx", ".js", "/index.ts", "/index.js"]) {
-            const candidate = resolved + ext;
-            if (fs.existsSync(path.join(repoRoot, candidate))) { resolved = candidate; break; }
+          const base = path.posix.normalize(path.posix.join(path.posix.dirname(rel), spec));
+          const candidates = ["", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+            "/index.ts", "/index.tsx", "/index.js", "/index.jsx"].map((ext) => base + ext);
+          // ESM-style "./x.js" in TS source points at "./x.ts" on disk
+          if (/\.jsx?$/.test(base)) candidates.push(base.replace(/\.js$/, ".ts").replace(/\.jsx$/, ".tsx"));
+          for (const cand of candidates) {
+            // only files the extractor indexes can be targets; an edge to
+            // "./globals.css" would dangle (no module ever exists for it)
+            if (TS_EXTS.has(path.posix.extname(cand)) && fs.existsSync(path.join(repoRoot, cand))) {
+              resolved = cand;
+              break;
+            }
           }
+        }
+        if (resolved) {
           acc.edges.push({ from: moduleId, to: `${repoName}:${resolved}`, kind: "imports", confidence: "resolved" });
         } else {
           acc.edges.push({ from: moduleId, to: `pkg:${spec}`, kind: "imports", confidence: "exact" });
@@ -838,12 +874,12 @@ async function initSitter() {
       // Node 24's turboshaft wasm pipeline fatally zone-OOMs while compiling
       // tree-sitter grammars (nodejs/node#63421). Only the --liftoff-only V8
       // flag on the node command line avoids it (runtime setFlagsFromString is
-      // too late: the wasm pipeline is configured at startup). bin/repolens.js
+      // too late: the wasm pipeline is configured at startup). bin/gitatlas.js
       // re-execs with the flag and npm test passes it; warn anyone embedding
       // this module directly. Drop when upstream fixes.
       if (parseInt(process.versions.node, 10) >= 24 && !process.execArgv.includes("--liftoff-only")) {
         console.warn(
-          "[repolens] Node 24+ can crash compiling tree-sitter grammars (nodejs/node#63421); run node with --liftoff-only",
+          "[gitatlas] Node 24+ can crash compiling tree-sitter grammars (nodejs/node#63421); run node with --liftoff-only",
         );
       }
       const WTS: any = await import("web-tree-sitter");
@@ -886,7 +922,21 @@ async function extractSitter(def: LangDef, files: string[], repoRoot: string, re
     // fresh parser per file: a mis-parse must never poison the next file
     const parser = new Parser();
     parser.setLanguage(lang);
-    const tree = parser.parse(text);
+    let tree;
+    try {
+      tree = parser.parse(text);
+    } catch (err) {
+      // Some grammar scanners throw from WASM on rare-but-valid constructs
+      // rather than returning an error tree (tree-sitter-bash does this on a
+      // `:(){` fork-bomb literal inside a case pattern, for one). The wasm
+      // runtime stays healthy afterward, so isolate the failure to this file:
+      // record the module (its LOC still counts) with no symbols and continue,
+      // instead of aborting the whole repo.
+      console.warn(`warning: ${def.name} parser crashed on ${rel}; skipping file (${String(err).split("\n")[0]})`);
+      parser.delete();
+      acc.modules.push({ id: moduleId, path: rel, repo: repoName, symbolCount: 0, loc: text.split("\n").length });
+      continue;
+    }
     const root: SitterNode = tree.rootNode;
     let symbolCount = 0;
     const add = (name: string, kind: string, n: SitterNode, exported: boolean, parent?: string) => {
@@ -1043,6 +1093,16 @@ export async function extractRepo(repoRoot: string, repoName: string, exclude?: 
     merged.edges.push({ from: rc.from, to, kind: "calls", confidence: "resolved" });
   }
 
+  // ── integrity: import edges must land on an indexed module or a pkg: node.
+  // A dangling target crashes layout (d3 forceLink throws on unknown ids) ──
+  const moduleIdSet = new Set(merged.modules.map((m) => m.id));
+  const isDangling = (e: Edge) => e.kind === "imports" && !e.to.startsWith("pkg:") && !moduleIdSet.has(e.to);
+  const danglingCount = merged.edges.filter(isDangling).length;
+  if (danglingCount > 0) {
+    console.warn(`warning: dropped ${danglingCount} import edge(s) with no indexed target module`);
+    merged.edges = merged.edges.filter((e) => !isDangling(e));
+  }
+
   // ── analysis: neighborhoods and hubs over the module import graph ──
   const moduleIds = merged.modules.map((m) => m.id);
   const importEdges = merged.edges
@@ -1115,6 +1175,7 @@ export async function extractRepo(repoRoot: string, repoName: string, exclude?: 
     root: repoRoot,
     language: languages,
     generatedAt: new Date().toISOString(),
+    sourceFingerprint: fingerprintFiles(repoRoot, all),
     ...merged,
     neighborhoodLabels: Object.fromEntries(labels),
   };

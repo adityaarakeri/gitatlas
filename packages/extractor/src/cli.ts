@@ -1,31 +1,44 @@
 #!/usr/bin/env node
 /**
- * repolens extract <group-folder> [--out <dir>] [--depth N] [--max-scan N]
- *                  [--submodules split|absorb|skip] [--ignore <glob>]...
+ * gitatlas extract <group-folder> [--out <dir>] [--depth N] [--max-scan N]
+ *                  [--submodules split|absorb|skip] [--ignore <glob>]... [--if-stale]
+ * gitatlas check   <group-folder> [same flags] [--json]
  *
  * Common build artifacts (node_modules, dist, build, *.egg-info, dot-dirs, ...)
  * and documentation trees (docs, doc) are skipped by default; --ignore adds
  * project-specific globs on top, matched against each entry's name and its
  * repo-relative path. Repeatable.
  *
+ * `check` re-walks the source with the same flags and compares content
+ * fingerprints against the existing map: no parsing, no writes, exit 0 fresh /
+ * 1 stale. `extract --if-stale` runs the same comparison first and skips the
+ * whole extraction when nothing changed, so callers (CI, agents) can run it
+ * unconditionally before reading the graphs.
+ *
  * Discovery and orchestration live here. Actual extraction lives in
  * extract.ts so tests and other tools can import it directly.
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { extractRepo, shouldSkipDir, globToRegExp, SCHEMA_VERSION, Edge } from "./extract.js";
+import { extractRepo, walk, fingerprintFiles, shouldSkipDir, globToRegExp, SCHEMA_VERSION, Edge } from "./extract.js";
+import { parseGitmodules } from "./freshness.js";
 import { computeLayout } from "./layout.js";
+
+const USAGE = [
+  "Usage: gitatlas extract <group-folder> [--out <dir>] [--depth N] [--max-scan N] [--submodules split|absorb|skip] [--ignore <glob>]... [--if-stale]",
+  "       gitatlas check   <group-folder> [same flags] [--json]",
+].join("\n");
 
 async function main() {
   const args = process.argv.slice(2);
-  if (args[0] !== "extract" || !args[1]) {
-    console.error("Usage: repolens extract <group-folder> [--out <dir>] [--depth N] [--max-scan N] [--submodules split|absorb|skip] [--ignore <glob>]...");
+  const cmd = args[0];
+  if ((cmd !== "extract" && cmd !== "check") || !args[1]) {
+    console.error(USAGE);
     process.exit(1);
   }
   const groupDir = path.resolve(args[1]);
   const outIdx = args.indexOf("--out");
-  const outDir = path.resolve(outIdx > -1 ? args[outIdx + 1] : path.join(groupDir, ".repolens"));
-  fs.mkdirSync(outDir, { recursive: true });
+  const outDir = path.resolve(outIdx > -1 ? args[outIdx + 1] : path.join(groupDir, ".gitatlas"));
 
   // ── user-supplied ignore globs (repeatable), additive to the built-in skips ──
   const ignoreGlobs: RegExp[] = [];
@@ -83,17 +96,6 @@ async function main() {
   const subMode = subIdx > -1 ? args[subIdx + 1] : "split";
   const excludes = new Map<string, Set<string>>();
 
-  function parseGitmodules(repoDir: string): string[] {
-    const file = path.join(repoDir, ".gitmodules");
-    if (!fs.existsSync(file)) return [];
-    const paths: string[] = [];
-    for (const line of fs.readFileSync(file, "utf8").split("\n")) {
-      const m = line.match(/^\s*path\s*=\s*(.+)\s*$/);
-      if (m) paths.push(m[1].trim());
-    }
-    return paths;
-  }
-
   if (subMode !== "absorb") {
     const seen = new Set(repos.map((r) => fs.realpathSync(r.dir)));
     const queue = [...repos];
@@ -119,6 +121,72 @@ async function main() {
       }
     }
   }
+  // ── freshness: content fingerprints of the walk vs the existing map ──
+  // Statuses: fresh (fingerprint matches), stale (source changed), new (repo
+  // has no graph yet), removed (graph exists, repo gone from disk), unknown
+  // (pre-fingerprint graph). Anything but fresh means re-extract.
+  type Freshness = { name: string; status: "fresh" | "stale" | "new" | "removed" | "unknown" };
+  function checkFreshness(): Freshness[] {
+    const manifestPath = path.join(outDir, "group.json");
+    if (!fs.existsSync(manifestPath)) {
+      return repos.map(({ name }) => ({ name, status: "new" as const }));
+    }
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+      repos: { name: string; graphFile: string }[];
+    };
+    const byName = new Map(manifest.repos.map((r) => [r.name, r]));
+    const statuses: Freshness[] = [];
+    for (const { name, dir } of repos) {
+      const entry = byName.get(name);
+      const graphPath = entry && path.join(outDir, entry.graphFile);
+      if (!graphPath || !fs.existsSync(graphPath)) {
+        statuses.push({ name, status: "new" });
+        continue;
+      }
+      const graph = JSON.parse(fs.readFileSync(graphPath, "utf8")) as { sourceFingerprint?: string };
+      if (!graph.sourceFingerprint) {
+        statuses.push({ name, status: "unknown" });
+        continue;
+      }
+      const files = walk(dir, [], excludes.get(dir), ignoreGlobs.length ? { root: dir, globs: ignoreGlobs } : undefined);
+      statuses.push({ name, status: graph.sourceFingerprint === fingerprintFiles(dir, files) ? "fresh" : "stale" });
+    }
+    const discovered = new Set(repos.map((r) => r.name));
+    for (const r of manifest.repos) {
+      if (!discovered.has(r.name)) statuses.push({ name: r.name, status: "removed" });
+    }
+    return statuses;
+  }
+
+  if (cmd === "check") {
+    const statuses = checkFreshness();
+    const fresh = statuses.length > 0 && statuses.every((s) => s.status === "fresh");
+    if (args.includes("--json")) {
+      process.stdout.write(JSON.stringify({ fresh, outDir, repos: statuses }, null, 2) + "\n");
+    } else if (statuses.length === 0) {
+      console.log("no repos discovered and no map found; nothing to compare");
+    } else {
+      const pad = Math.max(...statuses.map((s) => s.name.length));
+      for (const s of statuses) console.log(`  ${s.name.padEnd(pad)}  ${s.status}`);
+      console.log(fresh
+        ? `map is fresh (${statuses.length} repo${statuses.length === 1 ? "" : "s"})`
+        : "map is stale; run: gitatlas extract " + args[1]);
+    }
+    if (!fresh) process.exitCode = 1;
+    return;
+  }
+
+  if (args.includes("--if-stale")) {
+    const statuses = checkFreshness();
+    if (statuses.length > 0 && statuses.every((s) => s.status === "fresh")) {
+      console.log(`map is fresh (${statuses.length} repo${statuses.length === 1 ? "" : "s"}), skipping extraction`);
+      return;
+    }
+    const changed = statuses.filter((s) => s.status !== "fresh").map((s) => `${s.name} (${s.status})`);
+    console.log(`map is stale [${changed.join(", ")}], re-extracting`);
+  }
+
+  fs.mkdirSync(outDir, { recursive: true });
   console.log(`discovered ${repos.length} repos (submodules: ${subMode})`);
   if (ignoreGlobs.length) console.log(`ignoring ${ignoreGlobs.length} custom glob(s) on top of built-in skips`);
 
@@ -181,4 +249,4 @@ async function main() {
   }
 }
 
-main();
+void main();

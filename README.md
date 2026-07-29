@@ -1,17 +1,17 @@
-# repolens
+# gitatlas
 
 Point it at a folder of repositories. Get one interactive map of your whole system: every repo as a node, and you can tap into any of them, down through modules, down to individual functions and classes. Built for engineers who run 10+ repos in production and have no single picture of how it all fits together.
 
 One command in, one self-contained HTML file out. No server, no cloud, no account. Your code never leaves your machine.
 
-> Working name. The npm package name `repolens` is already taken, so publishing to npm needs a rename or a scoped name like `@yourname/repolens`. The GitHub repo name is unaffected.
+> Not published yet. Install from a clone for now; `npm i -g gitatlas` and `brew install` land with the first release. See `PUBLISH.md`.
 
 ## Quick start
 
 Requires Node 22 or newer.
 
 ```bash
-git clone <this-repo> && cd repolens
+git clone <this-repo> && cd gitatlas
 npm install
 npm run extract -- /path/to/your/repos
 ```
@@ -22,12 +22,28 @@ Don't have a folder of repos handy? The included fixtures work:
 
 ```bash
 npm run extract -- fixtures
-open fixtures/.repolens/index.html
+open fixtures/.gitatlas/index.html
 ```
+
+## Command reference
+
+One binary, six commands. From a clone, `npm run <command> --` invokes the same thing (for example `npm run extract -- fixtures`).
+
+| Command | What it does |
+| --- | --- |
+| `gitatlas extract <folder>` | Build the map: one graph JSON per repo plus the self-contained viewer HTML. Flags: `--out <dir>`, `--ignore <glob>` (repeatable), `--submodules split/absorb/skip`, `--depth N`, `--max-scan N`, `--if-stale` (skip when nothing changed) |
+| `gitatlas check <folder>` | Compare source content fingerprints against the existing map, no parsing, no writes. Exit 0 fresh, 1 stale; `--json` for scripts and agents |
+| `gitatlas brief` | Token-budgeted markdown digest of the map for agent context. Flags: `--out <dir>`, `--repo <name>`, `--budget <tokens>`, `--ignore <glob>` |
+| `gitatlas mcp` | Serve the map to AI agents over MCP on stdio: `brief`, `scope`, `find_symbol`, `module_info`, `check_freshness` tools. Flags: `--out <dir>`, `--ignore <glob>` |
+| `gitatlas scope` | Rank the structural neighborhood around a bug signal. `--trace <file>` or `--symbol <name>`, plus `--out <dir>`, `--repo <name>`, `--hops N`, `--top K`, `--json` |
+| `gitatlas site` | Start the hosted playground that maps public GitHub repos on demand |
+
+`extract` and `check` default `--out` to `<folder>/.gitatlas`; `brief`, `mcp`, and `scope` default it to `./.gitatlas` in the current directory.
 
 ## What you get
 
-- A zoomable map with three depths: group (repos as nodes), module (files and their imports), symbol (functions, classes, methods, inheritance)
+- A landing page showing the entire system as one tree: every repo, directory, and file on a single page. Repos carry their languages and symbol counts, files their symbol counts, directories their file counts. Repos and directories fold and unfold on click, and the → beside any of them dives into its map
+- A zoomable map with three more depths behind it: group (repos as nodes), module (files and their imports), symbol (functions, classes, methods, inheritance)
 - Dark and light themes (barrel and ground glass), following your system preference
 - A dashed ring on any symbol with zero references found in its repo. Treat it as a hint, not a verdict: the matching is name-based and repo-local, so a function consumed from another repo through a package will look unused when it isn't
 - Node size scaled by symbol count, so the heavy modules are obvious at a glance
@@ -41,6 +57,40 @@ Older versions ran a physics simulation in your browser, so the map wobbled into
 
 The generated HTML is nearly self-contained too. The d3 library gets vendored into the file at build time, so the map renders on a plane, in an air-gapped environment, anywhere. The only network requests left are the two webfonts, and the viewer falls back to system faces when they don't load.
 
+## Knowing when the map is stale
+
+A map that has drifted from the code is worse than no map, especially when an agent or a script is about to trust its file and line numbers. Every graph now carries a `sourceFingerprint`: a sha256 over the exact files that entered it. Two commands compare that fingerprint against the source tree:
+
+```bash
+gitatlas check ~/work/repos                   # exit 0 fresh, exit 1 stale; per-repo status
+gitatlas check ~/work/repos --json            # machine-readable report for scripts and agents
+gitatlas extract ~/work/repos --if-stale      # re-extract only when something changed
+```
+
+`check` re-walks the source with the same discovery rules and hashes file contents, no parsing, no writes. It reports each repo as `fresh`, `stale` (source changed), `new` (no graph yet), `removed` (graph exists, repo gone), or `unknown` (a pre-fingerprint graph). Anything but fresh exits 1.
+
+`extract --if-stale` is the one-liner for CI jobs and agent hooks: run it unconditionally before reading the graphs and it either no-ops in a fraction of the extract time or rebuilds the map. Fingerprints are content-based, not mtime-based, so the same tree is fresh on any machine and any clone. Pass the same `--ignore` and `--submodules` flags you extract with, so the comparison walks the same file set.
+
+## Feeding the map to a coding agent
+
+Two commands turn the map into agent context, and both re-check source fingerprints before emitting anything, so an agent is never handed stale file:line data without a warning inside the output itself.
+
+`brief` compresses the whole map into a token-budgeted markdown digest: per repo, its hubs, neighborhoods, largest modules, and key exports with file and line. Detail sections drop to fit the budget, and every cut is announced in the text, never silent. Paste it into a system prompt, a CLAUDE.md, or a task briefing:
+
+```bash
+gitatlas brief                          # reads ./.gitatlas, ~4000 token budget
+gitatlas brief --budget 1500            # tighter digest, sections drop to fit
+gitatlas brief --repo checkout-api      # one repo only
+```
+
+`mcp` serves the map to agents over the Model Context Protocol (stdio), so the agent queries on demand instead of carrying the whole graph in context. Five tools: `brief` (orientation), `scope` (stack trace or symbol to ranked suspects), `find_symbol` (name to file:line across every repo), `module_info` (one file's symbols, imports, and call traffic), and `check_freshness`. Register it with any MCP client, for example in Claude Code:
+
+```bash
+claude mcp add gitatlas -- gitatlas mcp --out /path/to/repos/.gitatlas
+```
+
+The server is dependency-free like everything else here, reloads automatically when the map is re-extracted, and re-verifies fingerprints (cached for 60 seconds) before every answer. If you extracted with `--ignore` globs, pass the same globs to `brief` and `mcp` so the freshness walk covers the same file set.
+
 ## Jump to anything
 
 Press Cmd+K (or Ctrl+K, or tap the ⌘K chip in the title plate). Type a few letters of any repo, file, class, or function across your entire group, hit enter, and the camera flies to it and pulses it red. Hovering any node dims everything except its direct connections, so you can trace one module's wiring through a dense map without losing your place.
@@ -49,9 +99,9 @@ Press Cmd+K (or Ctrl+K, or tap the ⌘K chip in the title plate). Type a few let
 
 Imports tell you who knows whom, like an org chart. Call edges are the phone records: which function actually rings which other function. At the symbol level the gold lines are calls, and they change what everything else means. A hub is now a module the rest of the code genuinely leans on at runtime, not just one that appears in many import statements. Neighborhoods cluster on real coupling, because cross-module call traffic feeds the clustering alongside imports. And the bug scoper walks actual call chains out from a crash instead of guessing by file proximity.
 
-One rule governs all of it: ambiguous callees are dropped, never guessed. When helper() could be three different symbols, repolens emits no edge rather than a wrong one. Resolution prefers a match in the same file, then accepts a unique match anywhere in the repo, and stays silent otherwise. Every call edge you see is one the extractor would defend.
+One rule governs all of it: ambiguous callees are dropped, never guessed. When helper() could be three different symbols, gitatlas emits no edge rather than a wrong one. Resolution prefers a match in the same file, then accepts a unique match anywhere in the repo, and stays silent otherwise. Every call edge you see is one the extractor would defend.
 
-Call recognition currently covers 13 of the 21 languages: TypeScript, JavaScript, Python, Go, Java, Ruby, C, C++, C#, PHP, Rust, Kotlin, Lua, and Elixir. The rest still get symbols, imports, and inheritance; their call configs are one probed config object away, and CONTRIBUTING shows the shape.
+Call recognition currently covers 14 of the 21 languages: TypeScript, JavaScript, Python, Go, Java, Ruby, C, C++, C#, PHP, Rust, Kotlin, Lua, and Elixir. The rest still get symbols, imports, and inheritance; their call configs are one probed config object away, and CONTRIBUTING shows the shape.
 
 ## Neighborhoods and hubs
 
@@ -69,8 +119,8 @@ When you have a stack trace, you usually don't need the whole repo, you need the
 
 ```bash
 npm run extract -- fixtures
-npm run scope -- --trace crash.txt --out fixtures/.repolens
-npm run scope -- --symbol charge --out fixtures/.repolens --json   # or anchor on a name
+npm run scope -- --trace crash.txt --out fixtures/.gitatlas
+npm run scope -- --symbol charge --out fixtures/.gitatlas --json   # or anchor on a name
 ```
 
 It prints the anchor, the ranked suspects with file:line, and a caveat it means every time: this ranks by how *close* code sits to the symptom, not by how likely it is to be the cause. Bugs where bad data flows through correct-looking code will sit outside the set. It scopes context for you or an agent to reason over. It does not claim to have found the bug.
@@ -142,7 +192,7 @@ Three design rules hold everywhere:
 - cross-repo stitcher: HTTP routes and clients, queue topics, shared-package joins
 - touchpoint inventory per repo: env vars, databases, third-party SDKs
 - proper multi-level clustering (aggregation with self-loop handling) if large repos show fragmented neighborhoods
-- watch mode, incremental re-extraction, MCP server for AI agents
+- watch mode and incremental re-extraction
 
 Already shipped: call edges (0.9.0), precomputed deterministic layout and the command palette (0.8.0), 21 languages (0.7.0), neighborhoods and hubs (0.6.0), the `scope` bug scoper (0.4.0).
 
@@ -153,12 +203,51 @@ The whole tool is one command with no setup, which makes it cheap to adopt as a 
 
 ```bash
 npm install -g <this-repo>     # or npx once published
-repolens extract .             # from any repo root
+gitatlas extract .             # from any repo root
 ```
 
-For CI, copy `examples/github-action.yml` into `.github/workflows/repolens.yml` and every push to main regenerates the map as a downloadable artifact. Point the upload step at GitHub Pages instead and the architecture map becomes a living URL your team can bookmark. Because the output is one HTML file, there is nothing to host, patch, or keep alive.
+For CI, copy `examples/github-action.yml` into `.github/workflows/gitatlas.yml` and every push to main regenerates the map as a downloadable artifact. Point the upload step at GitHub Pages instead and the architecture map becomes a living URL your team can bookmark. Because the output is one HTML file, there is nothing to host, patch, or keep alive.
 
 If you want it truly everywhere, add the extract step to your repo template or your org's scaffolding tool, the same slot where LICENSE and CI config already get stamped in.
+
+## Hosted playground
+
+`npm run site` starts a small server that maps any public GitHub repo on demand: visit `/gh/owner/repo` (or paste a URL into the landing page) and it shallow-clones the repo, runs the extractor in an isolated child process, and serves the generated map. Maps are cached by commit SHA and rebuilt only when the repo's HEAD moves.
+
+```bash
+npm run site                       # http://localhost:8130
+# then open http://localhost:8130/gh/expressjs/express
+```
+
+This is for public repos and demo deployments. The local CLI remains the real product: the playground necessarily processes submitted code on the server, so never point people at it for private code.
+
+Configuration is environment variables, all optional:
+
+- `PORT` listen port (default 8130; range 1-65535)
+- `GITATLAS_SITE_CACHE_DIR` cache location (default `.gitatlas-site`)
+- `GITATLAS_SITE_MAX_REPO_MB` stop clone workspaces that grow beyond this (default 200; range 1-10240)
+- `GITATLAS_SITE_CACHE_MB` total cache cap, oldest maps evicted first (default 2048; range 1-1048576)
+- `GITATLAS_SITE_CONCURRENCY` parallel builds (default 1; range 1-64)
+- `GITATLAS_SITE_MAX_ACTIVE_JOBS` combined lookup, running, and queued work cap (default 8; range 1-1024 and never lower than concurrency)
+- `GITATLAS_SITE_REQUESTS_PER_MINUTE` global new-map request limit (default 30; range 1-100000)
+- `GITATLAS_SITE_CLONE_TIMEOUT_S` / `GITATLAS_SITE_EXTRACT_TIMEOUT_S` build timeouts (defaults 120 / 300; range 1-86400 each)
+- `GITATLAS_SITE_HEAD_TTL_S` how long a resolved HEAD SHA is trusted before ls-remote runs again (default 300; range 1-86400)
+
+The server needs `git` on PATH and outbound access to github.com. Nothing else: no database, no API keys, no GitHub token (existence checks and clones go through plain `git ls-remote` / `git clone`, which have no API rate limits).
+
+### Deploying it cheaply
+
+The repo ships three ready-made paths, cheapest first:
+
+- **Render free tier, $0.** `render.yaml` is a one-click Blueprint: in the Render dashboard choose New, then Blueprint, and point it at your fork. The free instance sleeps after about 15 idle minutes (the next visitor waits out a cold start), and its disk is ephemeral, so the map cache rebuilds after restarts. Fine for a public demo. The blueprint lowers the repo cap to 50 MB to stay inside the 512 MB of RAM.
+- **Fly.io scale-to-zero, roughly $2 to $3 a month.** `fly.toml` plus the `Dockerfile`: run `fly launch --copy-config`, then `fly deploy`. Machines stop when idle and wake in seconds rather than a minute. Create a small volume and uncomment the `[mounts]` block if you want maps to survive cold starts.
+- **A small VPS, roughly $4 a month, or Oracle Cloud's Always Free VM, $0.** Anywhere Node 22 and git exist: `npm ci && npm run site` behind any reverse proxy, or `docker build -t gitatlas-site . && docker run -p 8130:8130 -v gitatlas-cache:/data gitatlas-site`. Always warm, persistent cache, no sleep. Oracle's free ARM VM (4 cores, 24 GB) is the most machine for zero dollars if you don't mind the setup.
+
+Also $0: an always-on machine you already own plus a Cloudflare Tunnel.
+
+Two free-tier notes: extraction is the memory-heavy step, so on 512 MB instances keep `GITATLAS_SITE_MAX_REPO_MB` at 50 or lower; and every build costs real CPU, so tune the active-job and request limits before promoting a playground URL widely.
+
+The `Dockerfile` uses Node 22 (no wasm flag dance), installs git, runs as the unprivileged built-in `node` user, and points the cache at the writable `/data` volume. Named and anonymous volumes work without extra setup; bind mounts must be writable by UID 1000. The cache is a cache: losing it costs a rebuild, never data.
 
 ## Prior art
 

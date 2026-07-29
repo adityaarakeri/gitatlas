@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * repolens scope --trace <file> [--repo <name>] [--hops N] [--top K] [--json]
- * repolens scope --symbol <name> [...]
+ * gitatlas scope --trace <file> [--repo <name>] [--hops N] [--top K] [--json]
+ * gitatlas scope --symbol <name> [...]
  *
  * Loads graphs produced by `extract` and returns the bounded structural
  * neighborhood around a bug signal. Diagnosis-only by construction: there is
@@ -15,7 +15,7 @@ import { scope, RepoGraph } from "./scope.js";
 function loadGraphs(outDir: string): RepoGraph[] {
   const manifestPath = path.join(outDir, "group.json");
   if (!fs.existsSync(manifestPath)) {
-    console.error(`no graphs found at ${outDir}. Run: repolens extract <folder> first.`);
+    console.error(`no graphs found at ${outDir}. Run: gitatlas extract <folder> first.`);
     process.exit(1);
   }
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
@@ -31,10 +31,10 @@ function arg(args: string[], flag: string): string | undefined {
 function main() {
   const args = process.argv.slice(2);
   if (args[0] !== "scope") {
-    console.error("Usage: repolens scope --trace <file> | --symbol <name> [--out <dir>] [--repo <name>] [--hops N] [--top K] [--json]");
+    console.error("Usage: gitatlas scope --trace <file> | --symbol <name> [--out <dir>] [--repo <name>] [--hops N] [--top K] [--json]");
     process.exit(1);
   }
-  const outDir = path.resolve(arg(args, "--out") ?? path.join(process.cwd(), ".repolens"));
+  const outDir = path.resolve(arg(args, "--out") ?? path.join(process.cwd(), ".gitatlas"));
   const tracePath = arg(args, "--trace");
   const symbol = arg(args, "--symbol");
   const repoFilter = arg(args, "--repo");

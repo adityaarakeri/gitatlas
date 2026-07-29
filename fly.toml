@@ -1,0 +1,28 @@
+# Fly.io deploy of the gitatlas playground, scale-to-zero so an idle demo
+# costs cents. `fly launch --copy-config` then `fly deploy`.
+#
+# Optional persistent cache (otherwise maps rebuild after each cold start):
+#   fly volumes create gitatlas_cache --size 1
+# and uncomment the [mounts] block.
+app = "gitatlas-playground"
+primary_region = "iad"
+
+[build]
+
+[env]
+  GITATLAS_SITE_MAX_REPO_MB = "100"
+
+[http_service]
+  internal_port = 8130
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+# [mounts]
+#   source = "gitatlas_cache"
+#   destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

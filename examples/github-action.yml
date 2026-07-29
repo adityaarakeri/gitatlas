@@ -1,7 +1,7 @@
-# Drop this into any repo at .github/workflows/repolens.yml and every push to
+# Drop this into any repo at .github/workflows/gitatlas.yml and every push to
 # main regenerates the architecture map as a build artifact. Rename the last
 # step to deploy to GitHub Pages if you want the map browsable at a URL.
-name: repolens map
+name: gitatlas map
 on:
   push:
     branches: [main]
@@ -16,8 +16,8 @@ jobs:
           node-version: 22
       - name: generate the map
         run: |
-          npx --yes repolens extract . --out .repolens
+          npx --yes gitatlas extract . --out .gitatlas
       - uses: actions/upload-artifact@v4
         with:
           name: architecture-map
-          path: .repolens/index.html
+          path: .gitatlas/index.html

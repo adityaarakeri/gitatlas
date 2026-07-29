@@ -1,0 +1,7 @@
+.git
+node_modules
+.gitatlas-site
+fixtures/.gitatlas
+blog
+Dockerfile
+.dockerignore

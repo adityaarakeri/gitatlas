@@ -1,0 +1,20 @@
+# One-click free deploy of the gitatlas playground on Render.
+# New > Blueprint in the Render dashboard, point it at this repo.
+#
+# Free-tier realities: the instance sleeps after ~15 idle minutes (first visit
+# afterwards waits out a cold start), has 512 MB RAM, and its disk is
+# ephemeral, so the map cache resets on restart. All fine for a public demo.
+# The lowered repo cap keeps extraction inside the free tier's memory.
+services:
+  - type: web
+    name: gitatlas-playground
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run site
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22.12.0"
+      - key: GITATLAS_SITE_MAX_REPO_MB
+        value: "50"

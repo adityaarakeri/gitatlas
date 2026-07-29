@@ -1,11 +1,11 @@
-# Contributing to repolens
+# Contributing to gitatlas
 
 Thanks for looking under the hood. This doc covers setup, the architecture you're stepping into, and the rules that keep the project coherent.
 
 ## Setup
 
 ```bash
-git clone <this-repo> && cd repolens
+git clone <this-repo> && cd gitatlas
 npm install
 npm run extract -- fixtures        # smoke test: should index 3 repos and emit index.html
 ```
@@ -95,6 +95,11 @@ npm run extract -- fixtures
 ```
 
 Fixture-based snapshot tests for extractor graph output are a welcome PR.
+### Dependency security
+
+CI runs `npm run audit:prod` and blocks high or critical vulnerabilities in production dependencies. Run the same command before submitting dependency changes.
+
+If the gate fails, use `npm audit --omit=dev` to identify the advisory and `npm explain <package>` to find the direct dependency that introduced it. Update that direct dependency, commit both `package.json` and `package-lock.json`, then run `npm run audit:prod`, `npm run typecheck`, `npm run lint`, and `npm test`. Do not use `npm audit fix --force`; major-version remediation needs an explicit compatibility review.
 
 ## Pull requests
 
