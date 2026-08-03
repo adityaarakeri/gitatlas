@@ -1,0 +1,71 @@
+name: Language support
+description: Request a new language, or better extraction for an existing one
+labels: [language]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A new language is usually one config object in `SITTER_LANGS`
+        (`packages/extractor/src/extract.ts`) plus a fixture in `fixtures/polyglot-lab`.
+        CONTRIBUTING.md walks through the shape, and Python, Go, Ruby, and Java are
+        the worked examples. This is the highest-value contribution to the project,
+        so if you want to write it yourself, say so and I will review it quickly.
+
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      placeholder: Haskell
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is missing
+      options:
+        - the language is not supported at all
+        - symbols extract, but imports do not resolve
+        - symbols and imports work, but call edges are missing
+        - declarations of a specific kind are skipped
+        - visibility (public vs private) is read wrong
+    validations:
+      required: true
+
+  - type: input
+    id: grammar
+    attributes:
+      label: tree-sitter grammar
+      description: For a new language, the grammar must already exist in `tree-sitter-wasms`. Please check and name it.
+      placeholder: tree-sitter-haskell
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample code
+      description: A small snippet showing declarations that should be extracted, and what each one should become.
+      placeholder: |
+        module Foo (bar) where
+
+        -- should become an exported function symbol named `bar`
+        bar :: Int -> Int
+        bar x = x + 1
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: conventions
+    attributes:
+      label: Visibility and nesting conventions
+      description: How does this language mark something private, and do methods attach to a type? gitatlas respects each language's own convention instead of forcing one lens.
+      placeholder: |
+        Anything not listed in the module export list is private.
+        Typeclass instance methods should attach to the instance type.
+
+  - type: checkboxes
+    id: offer
+    attributes:
+      label: Contributing
+      options:
+        - label: I would like to implement this myself

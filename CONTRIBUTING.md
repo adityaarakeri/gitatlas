@@ -111,8 +111,10 @@ If the gate fails, use `npm audit --omit=dev` to identify the advisory and `npm 
 
 ## Reporting bugs
 
-Include the command you ran, your folder structure (depth, submodules, monorepo or not), Node version, and the console output. Discovery bugs are almost always structure-dependent, so the structure matters more than the stack trace.
+Include the command you ran, your folder structure (depth, submodules, monorepo or not), Node version, and the console output. Discovery bugs are almost always structure-dependent, so the structure matters more than the stack trace. The [bug report form](.github/ISSUE_TEMPLATE/bug_report.yml) asks for exactly this.
+
+For anything exploitable, report privately instead. See [SECURITY.md](SECURITY.md).
 
 ## Code of conduct
 
-Be direct about code, decent to people. Maintainers will close anything that confuses the two.
+Be direct about code, decent to people. Maintainers will close anything that confuses the two. The full policy is in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).

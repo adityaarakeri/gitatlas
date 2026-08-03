@@ -4,6 +4,15 @@
   "private": true,
   "description": "Multi-repo architecture maps you can zoom into. C4-from-code, open source.",
   "license": "MIT",
+  "author": "Aditya Arakeri",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adityaarakeri/gitatlas.git"
+  },
+  "homepage": "https://github.com/adityaarakeri/gitatlas#readme",
+  "bugs": {
+    "url": "https://github.com/adityaarakeri/gitatlas/issues"
+  },
   "workspaces": [
     "packages/*"
   ],

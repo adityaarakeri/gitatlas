@@ -1,0 +1,82 @@
+name: Bug report
+description: Something extracted wrong, rendered wrong, or crashed
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing. The most useful bug reports name a specific repo and a specific wrong output.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did gitatlas do, and what did you expect instead?
+      placeholder: |
+        Ran extract on a Go monorepo. The `internal/auth` package shows zero symbols,
+        but it has about 40 exported functions.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The exact command. A public repo that shows the problem is worth more than any description.
+      placeholder: |
+        git clone https://github.com/some/public-repo
+        npm run extract -- ./public-repo
+        # open the map, go to module level, look at internal/auth
+      render: shell
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part
+      options:
+        - extractor (wrong or missing symbols, imports, call edges)
+        - viewer (rendering, navigation, keyboard, theme)
+        - scope (bug scoper)
+        - brief or mcp (agent context)
+        - site (hosted playground)
+        - check or freshness
+        - not sure
+    validations:
+      required: true
+
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      description: If this is an extractor bug, which language? gitatlas covers 21.
+      placeholder: Go
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Output of `node --version`, your OS, and the gitatlas version or commit.
+      placeholder: |
+        node v22.11.0
+        Windows 11
+        gitatlas 0.9.0 (commit abc1234)
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Console output
+      description: Any errors or warnings the CLI printed. Paste the whole thing if it is short.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I re-ran with `--if-stale` removed, so I know the map is not just out of date
+        - label: On Node 24, I confirmed the CLI passed `--liftoff-only` (npm scripts and `bin/gitatlas.js` do this automatically)

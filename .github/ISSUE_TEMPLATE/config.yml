@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/adityaarakeri/gitatlas/security/advisories/new
+    about: Report privately instead of opening a public issue. See SECURITY.md.
+  - name: Contributing guide
+    url: https://github.com/adityaarakeri/gitatlas/blob/main/CONTRIBUTING.md
+    about: Repo layout, the three rules, and how to add a language extractor.
