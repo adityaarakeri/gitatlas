@@ -1,10 +1,10 @@
 {
   "name": "gitatlas",
-  "version": "0.9.0",
-  "private": true,
+  "version": "0.10.0",
   "description": "Multi-repo architecture maps you can zoom into. C4-from-code, open source.",
   "license": "MIT",
   "author": "Aditya Arakeri",
+  "type": "commonjs",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/adityaarakeri/gitatlas.git"
@@ -13,9 +13,16 @@
   "bugs": {
     "url": "https://github.com/adityaarakeri/gitatlas/issues"
   },
-  "workspaces": [
-    "packages/*"
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "extract": "node bin/gitatlas.js extract",
     "check": "node bin/gitatlas.js check",
@@ -23,6 +30,8 @@
     "mcp": "node bin/gitatlas.js mcp",
     "scope": "node bin/gitatlas.js scope",
     "site": "node bin/gitatlas.js site",
+    "build": "node scripts/build.mjs",
+    "prepack": "npm run build",
     "test": "node --liftoff-only --test --test-isolation=none --import tsx \"packages/scoper/test/*.test.ts\" \"packages/extractor/test/*.test.ts\" \"packages/analysis/test/*.test.ts\" \"packages/site/test/*.test.ts\" \"packages/brief/test/*.test.ts\" \"packages/mcp/test/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"packages/**/*.ts\" bin/gitatlas.js --max-warnings=0",
@@ -34,7 +43,6 @@
     "eslint-plugin-n": "^17.24.0",
     "globals": "^16.5.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.0",
     "typescript-eslint": "^8.65.0"
   },
   "keywords": [
@@ -54,6 +62,7 @@
     "d3": "^7.9.0",
     "d3-force": "^3.0.0",
     "tree-sitter-wasms": "^0.1.13",
+    "typescript": "^5.6.0",
     "web-tree-sitter": "0.25.10"
   },
   "bin": {

@@ -15,7 +15,19 @@ if (parseInt(process.versions.node, 10) >= 24 && !process.execArgv.includes("--l
   process.exit(r.status ?? 1);
 }
 
-require("tsx/cjs");
+const path = require("path");
+const fs = require("fs");
+
+// Prefer the compiled dist/ (what the published tarball ships); fall back to
+// running the TypeScript sources through tsx so a git clone works with no
+// build step.
+const DIST = path.join(__dirname, "..", "dist", "packages");
+const useDist = fs.existsSync(DIST);
+if (!useDist) require("tsx/cjs");
+const base = useDist ? DIST : path.join(__dirname, "..", "packages");
+const ext = useDist ? "js" : "ts";
+const entry = (pkg, name) => path.join(base, pkg, "src", `${name}.${ext}`);
+
 const cmd = process.argv[2];
 const HELP = [
   "Usage: gitatlas <command> [options]",
@@ -32,19 +44,19 @@ const HELP = [
 switch (cmd) {
   case "extract":
   case "check":
-    require("../packages/extractor/src/cli.ts");
+    require(entry("extractor", "cli"));
     break;
   case "brief":
-    require("../packages/brief/src/cli.ts");
+    require(entry("brief", "cli"));
     break;
   case "mcp":
-    require("../packages/mcp/src/cli.ts");
+    require(entry("mcp", "cli"));
     break;
   case "scope":
-    require("../packages/scoper/src/cli.ts");
+    require(entry("scoper", "cli"));
     break;
   case "site":
-    require("../packages/site/src/start.ts");
+    require(entry("site", "start"));
     break;
   case "help":
   case "--help":

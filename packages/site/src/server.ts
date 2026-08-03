@@ -42,6 +42,17 @@ export interface PlaygroundOptions {
   directorySizer?: DirectorySizer;
 }
 
+// Resolve the CLI entry by walking up to the package root (the directory that
+// carries bin/gitatlas.js). Counting ".." segments breaks once this file runs
+// from the compiled dist/ tree instead of packages/.
+function defaultBin(): string {
+  for (let dir = __dirname; dir !== path.dirname(dir); dir = path.dirname(dir)) {
+    const candidate = path.join(dir, "bin", "gitatlas.js");
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  throw new Error(`gitatlas package root not found above ${__dirname}`);
+}
+
 export function createPlayground(options: PlaygroundOptions): http.Server {
 const { config } = options;
 const now = options.now || Date.now;
@@ -55,7 +66,7 @@ const workDir = path.join(cacheDir, "work");
 fs.mkdirSync(mapsDir, { recursive: true });
 fs.mkdirSync(workDir, { recursive: true });
 
-const bin = options.bin || path.join(__dirname, "..", "..", "..", "bin", "gitatlas.js");
+const bin = options.bin || defaultBin();
 const ERROR_RETRY_MS = 5 * 60 * 1000;
 
 /** A cache hit resolved under admission, streamed once the reservation is released. */

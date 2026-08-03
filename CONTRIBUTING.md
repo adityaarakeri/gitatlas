@@ -95,6 +95,18 @@ npm run extract -- fixtures
 ```
 
 Fixture-based snapshot tests for extractor graph output are a welcome PR.
+
+### The published package
+
+Development runs the TypeScript sources through tsx; the npm tarball ships compiled CommonJS in `dist/` (built by `npm run build`, wired into `prepack` so a stale `dist/` cannot be published). `bin/gitatlas.js` prefers `dist/` when it exists and falls back to sources, so a clone never needs a build step, but that also means the clone does not exercise the shipped artifact. For anything touching packaging, paths, or `__dirname` logic, test the tarball, not the tree:
+
+```bash
+npm pack
+npm install -g --prefix /tmp/gitatlas-test ./gitatlas-*.tgz
+# run extract/check/brief/scope from a directory outside the repo,
+# then assert the generated index.html exists with data baked in
+```
+
 ### Dependency security
 
 CI runs `npm run audit:prod` and blocks high or critical vulnerabilities in production dependencies. Run the same command before submitting dependency changes.

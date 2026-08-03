@@ -36,18 +36,17 @@ gitatlas makes the map a file. One command, one HTML file, openable by anyone fr
 Requires Node 22 or newer. No native builds, no database, no daemon.
 
 ```bash
-git clone https://github.com/adityaarakeri/gitatlas && cd gitatlas
-npm install
-npm run extract -- /path/to/your/repos
+npm install -g gitatlas        # or one-off: npx gitatlas extract /path/to/your/repos
+gitatlas extract /path/to/your/repos
 ```
 
-Open the `index.html` it prints at the end. That is the whole install.
+Open the `index.html` it prints at the end. That is the whole install. (About 60 MB on disk, dominated by the WASM grammars that cover 21 languages with zero native compilation.)
 
-> Not published to npm yet, so the clone is the install. `npm i -g gitatlas` and `brew install` land with the first release. See [PUBLISH.md](PUBLISH.md).
-
-No repos handy? The bundled fixtures work:
+Working on gitatlas itself? The clone needs no build step:
 
 ```bash
+git clone https://github.com/adityaarakeri/gitatlas && cd gitatlas
+npm install
 npm run extract -- fixtures && open fixtures/.gitatlas/index.html
 ```
 
@@ -137,7 +136,7 @@ The full list, including the Node 24 V8 flag and per-language privacy convention
 
 Every repo should ship with its own map, the same way it ships with a README.
 
-Copy [`examples/github-action.yml`](examples/github-action.yml) into `.github/workflows/gitatlas.yml` and every push to main regenerates the map as a downloadable artifact. Point the upload step at GitHub Pages instead and it becomes a URL your team can bookmark. (The workflow calls `npx gitatlas`, so it starts working once the package is published.)
+Copy [`examples/github-action.yml`](examples/github-action.yml) into `.github/workflows/gitatlas.yml` and every push to main regenerates the map as a downloadable artifact. Point the upload step at GitHub Pages instead and it becomes a URL your team can bookmark.
 
 ## Roadmap
 

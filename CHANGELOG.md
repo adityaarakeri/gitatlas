@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.10.0 - 2026-08-03
+- First npm release: `npm install -g gitatlas` or `npx gitatlas`. The tarball ships compiled CommonJS in `dist/` plus the viewer template; `bin/gitatlas.js` prefers `dist/` and falls back to running the TypeScript sources through tsx from a clone, so contributor quick start is unchanged
+- `typescript` is now a runtime dependency: the TS/JS extractor calls the compiler API at extraction time, so a published install needs it (it was previously a devDependency, which only worked from a clone)
 - Renamed from repolens to gitatlas ahead of the first release. The command is `gitatlas`, the entry point is `bin/gitatlas.js`, the default output directory is `.gitatlas`, the playground cache is `.gitatlas-site`, and the playground environment variables are `GITATLAS_SITE_*`. A hard cut with no aliases: nothing had been published under the old name, so there was nothing to migrate. Existing local `.repolens` maps are not read; delete them and re-extract
 - New `gitatlas brief` command (`packages/brief`): compresses the map into a token-budgeted markdown digest for agent context, per repo: hubs, neighborhoods, largest modules, key exports with file:line. Detail sections drop to fit `--budget` and every cut is announced in the text; pure builder in `brief.ts`, I/O in `cli.ts`, mirroring the scoper split
 - New `gitatlas mcp` command (`packages/mcp`): a dependency-free MCP server over stdio with five tools: `brief`, `scope`, `find_symbol`, `module_info`, `check_freshness`. Reloads graphs when group.json changes on disk; re-verifies source fingerprints (60s cache) before every tool call and flags stale repos inside each result, so an agent never consumes unmarked stale file:line data
