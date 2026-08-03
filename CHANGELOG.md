@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+- `npm test` fixed on Node 22: the script hardcoded `--test-isolation=none`, which only exists from Node 24 (Node 22 spells it `--experimental-test-isolation`), so the suite died at startup with `node: bad option: --test-isolation=none` and the Node 22 CI leg never ran a test. The command now goes through `scripts/test.mjs`, which asks node which spelling it accepts, keeps the single-process mode the tree-sitter grammars need, and adds `--liftoff-only` on Node 24+
+- `npm test -- <file>` runs a single test file with the same flags
+- Site hero chart corrected: the stylized map is one repo at module level, so its files are now one language instead of five, and the confidence legend no longer stretches each swatch line across its own label (`.chart-frame svg` was sizing the legend swatches to 100% width along with the map)
+
 ## 0.10.0 - 2026-08-03
 - First npm release: `npm install -g gitatlas` or `npx gitatlas`. The tarball ships compiled CommonJS in `dist/` plus the viewer template; `bin/gitatlas.js` prefers `dist/` and falls back to running the TypeScript sources through tsx from a clone, so contributor quick start is unchanged
 - `typescript` is now a runtime dependency: the TS/JS extractor calls the compiler API at extraction time, so a published install needs it (it was previously a devDependency, which only worked from a clone)

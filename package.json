@@ -32,7 +32,7 @@
     "site": "node bin/gitatlas.js site",
     "build": "node scripts/build.mjs",
     "prepack": "npm run build",
-    "test": "node --liftoff-only --test --test-isolation=none --import tsx \"packages/scoper/test/*.test.ts\" \"packages/extractor/test/*.test.ts\" \"packages/analysis/test/*.test.ts\" \"packages/site/test/*.test.ts\" \"packages/brief/test/*.test.ts\" \"packages/mcp/test/*.test.ts\"",
+    "test": "node scripts/test.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"packages/**/*.ts\" bin/gitatlas.js --max-warnings=0",
     "audit:prod": "npm audit --omit=dev --audit-level=high"

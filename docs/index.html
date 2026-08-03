@@ -243,15 +243,18 @@
     font-family: var(--disp); font-weight: 700; color: var(--etch-dim);
   }
   .coords { font-family: var(--mono); font-weight: 400; letter-spacing: 0.04em; text-transform: none; color: var(--etch-faint); font-variant-numeric: tabular-nums; }
-  .chart-frame svg { display: block; width: 100%; height: auto; }
+  /* the map itself scales with the frame; the legend swatches below it must
+     not, or they stretch to the full row width and shove their labels into
+     the next key */
+  .chart-frame > svg { display: block; width: 100%; height: auto; }
 
   .legend {
     display: flex; flex-wrap: wrap; gap: 16px 24px;
     padding: 12px 14px; border-top: 1px solid var(--etch-faint);
     font-size: 11px; color: var(--etch-dim);
   }
-  .legend .key { display: inline-flex; align-items: center; gap: 8px; }
-  .legend svg { flex: none; }
+  .legend .key { display: inline-flex; align-items: center; gap: 9px; white-space: nowrap; }
+  .legend svg { display: block; flex: none; width: auto; height: auto; }
 
   /* node/edge styling + hover dimming */
   .n circle.body { fill: var(--node-fill); stroke: var(--etch-dim); stroke-width: 1.4; }
@@ -507,22 +510,22 @@
             <circle class="body" cx="196" cy="112" r="8.5"/>
             <text x="212" y="104">gateway.ts</text>
           </g>
-          <g class="n" id="n3"><circle class="body" cx="150" cy="160" r="6.5"/><text x="160" y="176">auth.py</text></g>
+          <g class="n" id="n3"><circle class="body" cx="150" cy="160" r="6.5"/><text x="160" y="176">auth.ts</text></g>
           <g class="n" id="n4">
             <circle class="ring-unused" cx="86" cy="132" r="11"/>
             <circle class="body" cx="86" cy="132" r="5.5"/>
-            <text x="30" y="152">legacy.rb</text>
+            <text x="26" y="156">legacy.ts</text>
           </g>
           <g class="n" id="n5">
             <circle class="ring-hub" cx="404" cy="228" r="15"/>
             <circle class="body" cx="404" cy="228" r="9"/>
-            <text x="358" y="210">ledger.go</text>
+            <text x="342" y="204">ledger.ts</text>
           </g>
-          <g class="n" id="n6"><circle class="body" cx="478" cy="262" r="7"/><text x="492" y="256">invoice.go</text></g>
-          <g class="n" id="n7"><circle class="body" cx="416" cy="316" r="7"/><text x="430" y="334">tax.rs</text></g>
-          <g class="n" id="n8"><circle class="body" cx="520" cy="220" r="5.5"/><text x="532" y="212">fx.go</text></g>
-          <g class="n" id="n9"><circle class="body" cx="166" cy="300" r="7.5"/><text x="98" y="292">queue.py</text></g>
-          <g class="n" id="n10"><circle class="body" cx="206" cy="344" r="6.5"/><text x="218" y="360">retry.py</text></g>
+          <g class="n" id="n6"><circle class="body" cx="478" cy="262" r="7"/><text x="492" y="256">invoice.ts</text></g>
+          <g class="n" id="n7"><circle class="body" cx="416" cy="316" r="7"/><text x="430" y="334">tax.ts</text></g>
+          <g class="n" id="n8"><circle class="body" cx="520" cy="220" r="5.5"/><text x="532" y="212">fx.ts</text></g>
+          <g class="n" id="n9"><circle class="body" cx="166" cy="300" r="7.5"/><text x="98" y="292">queue.ts</text></g>
+          <g class="n" id="n10"><circle class="body" cx="206" cy="344" r="6.5"/><text x="218" y="360">retry.ts</text></g>
         </svg>
         <div class="legend" aria-label="Edge confidence legend">
           <span class="key"><svg width="26" height="6"><line x1="0" y1="3" x2="26" y2="3" stroke="var(--etch-dim)" stroke-width="1.4"/></svg>exact</span>

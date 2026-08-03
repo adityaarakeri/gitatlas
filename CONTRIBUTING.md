@@ -10,7 +10,7 @@ npm install
 npm run extract -- fixtures        # smoke test: should index 3 repos and emit index.html
 ```
 
-Requirements: Node 22+. No native dependencies, no build step. The extractor runs through `tsx` directly.
+Requirements: Node 22+ to use gitatlas, Node 22.8+ to run the test suite (that is the first release with a test-isolation flag). No native dependencies, no build step. The extractor runs through `tsx` directly.
 
 Note for Node 24: V8's turboshaft wasm pipeline crashes compiling tree-sitter grammars ([nodejs/node#63421](https://github.com/nodejs/node/issues/63421)). The CLI and npm scripts pass `--liftoff-only` for you; when running a test file by hand, do the same: `node --liftoff-only --import tsx packages/extractor/test/extract.test.ts`.
 
@@ -83,7 +83,10 @@ The extractor and scoper both have unit suites (Node's built-in runner, no deps)
 
 ```bash
 npm test                 # full suite: extractor (incl. all 21 languages), analysis, scoper
+npm test -- packages/brief/test/brief.test.ts   # one file
 ```
+
+`scripts/test.mjs` wires the flags: it runs everything in a single process (child test processes crash compiling tree-sitter grammars on Node 24) and picks the isolation flag by asking node which spelling it accepts, since Node 22 calls it `--experimental-test-isolation` and Node 24 calls it `--test-isolation`.
 
 Logic that can be pure should be pure and tested. The scoper is split exactly that way: `scope.ts` is all pure functions (trace parsing, resolution, walking, ranking) with `cli.ts` doing only I/O. Mirror that split for new logic so it stays testable.
 

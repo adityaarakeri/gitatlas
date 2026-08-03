@@ -19,13 +19,15 @@ npm run mcp -- --out fixtures/.gitatlas                   # MCP server over stdi
 npm run scope -- --trace crash.txt --out fixtures/.gitatlas   # bug scoper (requires a prior extract)
 ```
 
-Run a single test file (the `--liftoff-only` flag is required on Node 24+ because V8's turboshaft pipeline crashes compiling tree-sitter grammars, nodejs/node#63421; npm scripts and `bin/gitatlas.js` pass it automatically):
+Run a single test file:
 
 ```bash
-node --liftoff-only --test --test-isolation=none --import tsx packages/extractor/test/extract.test.ts
+npm test -- packages/extractor/test/extract.test.ts
 ```
 
-Requires Node 22+.
+`scripts/test.mjs` wires the flags for both: single-process isolation (child test processes crash compiling tree-sitter grammars on Node 24, nodejs/node#63421) plus `--liftoff-only` on Node 24+. The isolation flag is detected, not hardcoded: Node 22 spells it `--experimental-test-isolation`, Node 24 spells it `--test-isolation`, and the wrong spelling is a fatal `node: bad option` at startup.
+
+Requires Node 22+ (22.8+ for the test suite).
 
 ## Architecture
 
