@@ -30,7 +30,7 @@ jobs:
       - name: smoke test scoper
         run: |
           printf 'at PaymentService.charge (src/services/payment.ts:3:1)\n' > /tmp/t.txt
-          npm run scope -- --trace /tmp/t.txt --out fixtures/.gitatlas --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const r=JSON.parse(d);if(!r.anchor.resolved)process.exit(1)})"
+          node bin/gitatlas.js scope --trace /tmp/t.txt --out fixtures/.gitatlas --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const r=JSON.parse(d);if(!r.anchor.resolved)process.exit(1)})"
   container-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 10

@@ -7,3 +7,6 @@ Thumbs.db
 blog/
 dist/
 *.tgz
+.agent/
+CHECKLIST.md
+top*
