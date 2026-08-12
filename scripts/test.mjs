@@ -19,6 +19,7 @@ const TEST_GLOBS = [
   "packages/site/test/*.test.ts",
   "packages/brief/test/*.test.ts",
   "packages/mcp/test/*.test.ts",
+  "packaging/test/*.test.ts",
 ];
 
 const accepts = (flag) =>

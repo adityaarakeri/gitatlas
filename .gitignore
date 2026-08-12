@@ -9,4 +9,5 @@ dist/
 *.tgz
 .agent/
 CHECKLIST.md
+BREW.md
 top*

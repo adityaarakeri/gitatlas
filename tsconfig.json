@@ -11,7 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["packages/**/*.ts"],
+  "include": ["packages/**/*.ts", "packaging/**/*.ts"],
   "exclude": [
     "**/fixtures/**",
     "**/test/repos/**",

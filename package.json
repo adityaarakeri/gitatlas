@@ -34,7 +34,7 @@
     "prepack": "npm run build",
     "test": "node scripts/test.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint \"packages/**/*.ts\" bin/gitatlas.js --max-warnings=0",
+    "lint": "eslint \"packages/**/*.ts\" \"packaging/**/*.ts\" bin/gitatlas.js --max-warnings=0",
     "audit:prod": "npm audit --omit=dev --audit-level=high"
   },
   "devDependencies": {

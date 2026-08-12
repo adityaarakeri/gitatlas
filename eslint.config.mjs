@@ -3,7 +3,7 @@ import globals from "globals";
 import nodePlugin from "eslint-plugin-n";
 import tseslint from "typescript-eslint";
 
-const typescriptFiles = ["packages/**/*.ts"];
+const typescriptFiles = ["packages/**/*.ts", "packaging/**/*.ts"];
 
 export default [
   {
@@ -60,7 +60,7 @@ export default [
     },
   },
   {
-    files: ["packages/**/test/**/*.ts"],
+    files: ["packages/**/test/**/*.ts", "packaging/test/**/*.ts"],
     rules: {
       "@typescript-eslint/no-floating-promises": "off",
     },
