@@ -1,0 +1,200 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance signs the attestation with this
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      bump-tap: ${{ steps.tap.outputs.bump }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # The tag is what a human types, so it is the thing most likely to be
+      # wrong. Catch a mismatch before anything is built or published.
+      - name: tag matches package.json version
+        id: version
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          tag=${GITHUB_REF_NAME#v}
+          if [ "$version" != "$tag" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Secrets are not readable from a job-level `if`, so decide here whether
+      # the Homebrew job can run. Without the token the release is npm-only
+      # instead of a failure.
+      - name: is the tap wired up
+        id: tap
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "$TAP_TOKEN" ]; then
+            echo "bump=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "bump=no" >> "$GITHUB_OUTPUT"
+            echo "::notice::HOMEBREW_TAP_TOKEN is not set, skipping the formula bump"
+          fi
+
+      - run: npm ci
+      - run: npm run audit:prod
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+      # prepack rebuilds dist/, so this cannot pack a stale build.
+      - run: npm pack
+
+      # Everything below runs the installed binary from outside the checkout.
+      # The clone works whatever `files` says, so only a real install proves the
+      # tarball ships what the six commands need.
+      - name: install the tarball and smoke test the real binary
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          npm install --global "$GITHUB_WORKSPACE/gitatlas-${VERSION}.tgz"
+
+          work=$(mktemp -d)
+          map="$work/map"
+          fixtures="$GITHUB_WORKSPACE/fixtures"
+          cd "$work"
+
+          gitatlas --help | grep -q "Usage: gitatlas"
+
+          gitatlas extract "$fixtures" --out "$map"
+          test -f "$map/group.json"
+          test -f "$map/index.html"
+
+          # A missing viewer template only warns and exits 0, so assert on the
+          # artifact: data baked in, d3 vendored rather than pulled from a CDN.
+          MAP="$map" node -e '
+            const fs = require("node:fs");
+            const html = fs.readFileSync(process.env.MAP + "/index.html", "utf8");
+            if (html.includes("/*__DATA__*/null")) throw new Error("viewer has no data baked in");
+            if (html.includes("cdnjs.cloudflare.com")) throw new Error("d3 was not vendored");
+          '
+
+          gitatlas check "$fixtures" --out "$map"
+
+          gitatlas brief --out "$map" --budget 800 > brief.md
+          test -s brief.md
+
+          printf 'at PaymentService.charge (src/services/payment.ts:3:1)\n' > trace.txt
+          gitatlas scope --trace trace.txt --out "$map" --json > scope.json
+          node -e '
+            const r = JSON.parse(require("node:fs").readFileSync("scope.json", "utf8"));
+            if (!r.anchor.resolved) throw new Error("scope did not resolve the trace");
+          '
+
+          # mcp is the one command with no human-readable output. It exits on
+          # stdin EOF, so a single request is a complete session.
+          printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
+            | gitatlas mcp --out "$map" > mcp.jsonl
+          node -e '
+            const line = require("node:fs").readFileSync("mcp.jsonl", "utf8").split("\n")[0];
+            const msg = JSON.parse(line);
+            if (msg.error) throw new Error("mcp initialize failed: " + JSON.stringify(msg.error));
+            if (msg.result?.serverInfo?.name !== "gitatlas") throw new Error("mcp sent no serverInfo");
+          '
+
+          # site resolves bin/gitatlas.js by walking up to the package root; that
+          # walk is what breaks when the package moves into a global prefix.
+          PORT=8131 GITATLAS_SITE_CACHE_DIR="$work/site-cache" gitatlas site > site.log 2>&1 &
+          site_pid=$!
+          ready=false
+          for _ in $(seq 1 30); do
+            if [ "$(curl --fail --silent http://127.0.0.1:8131/healthz || true)" = "ok" ]; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          kill "$site_pid" 2>/dev/null || true
+          if [ "$ready" != true ]; then
+            cat site.log
+            echo "::error::gitatlas site never answered /healthz from the installed tarball"
+            exit 1
+          fi
+
+          echo "all six commands ran from the installed tarball"
+
+      # --provenance on the command line, not in publishConfig: putting it in
+      # package.json would break a manual publish from a laptop, which has no
+      # OIDC issuer to sign with.
+      - name: publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance
+
+  homebrew:
+    needs: publish
+    if: needs.publish.outputs.bump-tap == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: adityaarakeri/homebrew-gitatlas
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      # Hash what the registry actually serves rather than the local pack
+      # output: it proves the publish landed, and it is the file brew downloads.
+      - name: hash the published tarball
+        id: tarball
+        env:
+          VERSION: ${{ needs.publish.outputs.version }}
+        run: |
+          set -euo pipefail
+          url="https://registry.npmjs.org/gitatlas/-/gitatlas-${VERSION}.tgz"
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent --location "$url" -o tarball.tgz; then break; fi
+            echo "registry is not serving ${VERSION} yet (attempt ${attempt}/20)"
+            sleep 15
+          done
+          if [ ! -f tarball.tgz ]; then
+            echo "::error::${url} never became available"
+            exit 1
+          fi
+          echo "sha256=$(sha256sum tarball.tgz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: bump the formula in the tap
+        env:
+          VERSION: ${{ needs.publish.outputs.version }}
+          SHA256: ${{ steps.tarball.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          node scripts/brew-formula.mjs \
+            --version "$VERSION" \
+            --sha256 "$SHA256" \
+            --out tap/Formula/gitatlas.rb
+          cd tap
+          # --porcelain, not `git diff`: on a tap that has no formula yet the
+          # rendered file is untracked, which `git diff` does not report.
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "::notice::the tap already carries gitatlas ${VERSION}"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/gitatlas.rb
+          git commit -m "gitatlas ${VERSION}"
+          git push
+          echo "::notice::tap bumped to ${VERSION}; refresh the copy in this repo with: node scripts/brew-formula.mjs --version ${VERSION} --sha256 ${SHA256}"

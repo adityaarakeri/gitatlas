@@ -1,12 +1,14 @@
 # Publishing gitatlas
 
 Plan for shipping gitatlas as a global CLI: an npm package (`npm i -g`, `npx`) and a
-Homebrew formula. Nothing here is implemented yet. This file is the spec; each phase
-lists the concrete edits, the verification that proves it, and the reason.
+Homebrew formula. Each phase lists the concrete edits, the verification that proves it,
+and the reason.
 
-Current state: `package.json` is `"private": true`, the `bin` entry executes TypeScript
-sources through `tsx` (a devDependency), and there is no build step, no git remote, no
-tags, and no `files` allowlist. All four block a working `npm install -g`.
+Current state: phases 0 through 4 shipped with 0.10.0. Phase 5 is built but not yet
+switched on: `.github/workflows/release.yml` publishes on a `v*` tag and bumps the
+formula, `packaging/homebrew/gitatlas.rb` is the formula, and `scripts/brew-formula.mjs`
+renders it. What is left is outside this repo: the tap repository, two secrets, and the
+first tagged release. See "Operating the pipeline" at the end.
 
 ---
 
@@ -175,49 +177,23 @@ surprise.
 2. Fold the CHANGELOG `Unreleased` block into a `0.10.0` section with a date.
 3. Tag `v0.10.0`.
 
-Add `.github/workflows/release.yml`, triggered on `v*` tags. It reuses the existing `ci`
-job as a gate, then packs, installs the tarball into a temp prefix, smoke tests the real
-binary, and only then publishes:
+`.github/workflows/release.yml` is triggered on `v*` tags. It runs the same gate as `ci`
+(audit, typecheck, lint, tests), then packs, installs the tarball globally, smoke tests
+the real binary, and only then publishes. Two things the sketch of this file did not have:
 
-```yaml
-name: release
-on:
-  push:
-    tags: ["v*"]
-permissions:
-  contents: read
-  id-token: write        # required for npm provenance
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
-      - run: npm ci
-      - run: npm run typecheck && npm run lint && npm test
-      - run: npm pack
-      - name: install the tarball and smoke test the real binary
-        run: |
-          npm i -g ./*.tgz
-          gitatlas extract fixtures --out /tmp/m
-          test -f /tmp/m/index.html
-          node -e "const h=require('fs').readFileSync('/tmp/m/index.html','utf8');
-                   if(h.includes('/*__DATA__*/null')) throw new Error('no data baked in');
-                   if(h.includes('cdnjs.cloudflare.com')) throw new Error('d3 not vendored')"
-          gitatlas check fixtures --out /tmp/m
-          gitatlas brief --out /tmp/m --budget 800 | head -5
-          gitatlas scope --symbol charge --out /tmp/m --json > /dev/null
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-```
+- **The tag is checked against `package.json` first.** The tag is the hand-typed part of a
+  release, so a mismatch fails before anything is built rather than publishing a version
+  nobody meant to cut.
+- **All six commands run, from a temp directory outside the checkout.** `mcp` gets a real
+  JSON-RPC `initialize` over stdio (it exits on stdin EOF, so one request is a whole
+  session), and `site` has to answer `/healthz`, because the package-root walk that finds
+  `bin/gitatlas.js` is exactly the thing a global prefix breaks.
 
 Auth: prefer npm trusted publishing (OIDC, no long-lived secret) if the account has it
 enabled; otherwise a granular access token scoped to this one package, stored as
-`NPM_TOKEN`. `--provenance` comes from `publishConfig` and needs `id-token: write`.
+`NPM_TOKEN`. `--provenance` is passed on the command line rather than set in
+`publishConfig`, so a manual publish from a laptop still works; it needs `id-token: write`,
+which the job grants.
 
 Note the smoke test runs against `fixtures/`, which the tarball does not ship. That is
 intentional: the fixtures come from the checkout, the binary comes from the installed
@@ -268,69 +244,63 @@ homebrew-core has a notability bar (roughly 75 stars / 30 forks / 30 watchers, p
 "more than a thin wrapper around npm install") that a day-one project does not clear. A
 personal tap has no bar and works immediately.
 
-Create the repo `OWNER/homebrew-gitatlas` with `Formula/gitatlas.rb`:
+The formula lives at `packaging/homebrew/gitatlas.rb` in this repo, so it is reviewed
+alongside the code it installs. The tap repo (`adityaarakeri/homebrew-gitatlas`) serves a
+generated copy: the release workflow renders this file with a new `url` and `sha256` into
+`Formula/gitatlas.rb` there. Everything except those two lines is edited here.
 
-```ruby
-class Gitatlas < Formula
-  desc "Multi-repo architecture maps you can zoom into"
-  homepage "https://github.com/OWNER/gitatlas"
-  url "https://registry.npmjs.org/gitatlas/-/gitatlas-0.10.0.tgz"
-  sha256 "FILL_IN"
-  license "MIT"
-
-  depends_on "node"
-
-  def install
-    system "npm", "install", *std_npm_args
-    bin.install_symlink Dir["#{libexec}/bin/*"]
-  end
-
-  test do
-    (testpath/"repo/.git").mkpath
-    (testpath/"repo/src").mkpath
-    (testpath/"repo/src/a.ts").write("export function hello() { return 1 }\n")
-    system bin/"gitatlas", "extract", testpath, "--out", testpath/"out"
-    assert_path_exists testpath/"out/index.html"
-    assert_match "gitatlas", shell_output("#{bin}/gitatlas --help")
-  end
-end
-```
-
-Install command: `brew install OWNER/gitatlas/gitatlas`.
+Install command, once the tap exists: `brew install adityaarakeri/gitatlas/gitatlas`.
 
 Notes on the formula:
 
 - The url is the npm tarball, not a GitHub tarball. That is the standard pattern for
   Node CLIs and it means Homebrew installs the same artifact npm users get, including
   `dist/`, with no build toolchain on the user's machine.
-- `std_npm_args` handles the `libexec` prefix and the production-only install.
+- `std_npm_args` handles the `libexec` prefix and the production-only install. It also
+  passes `--ignore-scripts` to both its `npm pack` and its `npm install`, which is why the
+  `prepack` build hook is not a problem here: `scripts/build.mjs` is not in the published
+  tarball, so a formula that ran lifecycle scripts would fail on the missing file.
 - `depends_on "node"` is required. Homebrew will not use the user's system Node.
-- The `test do` block needs a directory tree that looks like a group of repos, because
-  extraction discovers repos by `.git` markers. Verify the empty-`.git` shortcut actually
-  satisfies discovery when running `brew test gitatlas`; if it does not, `git init` in the
-  test instead.
+- Repo discovery is `fs.existsSync(path.join(root, ".git"))` and nothing more, so the
+  empty `.git` directory in the test block is enough. No `git init` needed.
+- The test asserts on the generated HTML, not just on exit codes: a missing viewer
+  template only warns, so `brew test` has to check that the data was baked in and that d3
+  was vendored instead of left as a CDN script tag.
 - `desc` must not start with an article, must not repeat the formula name, and stays under
-  80 characters. The line above already satisfies all three.
+  80 characters. The line in the formula satisfies all three.
 - Run `brew audit --strict --online gitatlas` and `brew test gitatlas` before pushing.
 
 Practical constraint: Homebrew runs on macOS and Linux only, and this workstation is
 Windows. Formula work has to happen on a macOS or Linux machine, or on a
-`macos-latest` GitHub Actions runner.
+`macos-latest` GitHub Actions runner. The formula as committed points at the published
+0.10.0 tarball with its real digest, so it can be installed and tested as-is before any
+new release is cut.
 
 ### 5b. Keeping the formula current
 
-`brew bump-formula-pr` targets homebrew-core, so a tap needs its own path. Simplest
-reliable version: after `npm publish` succeeds, the release workflow fetches the published
-tarball's sha256 from the registry, rewrites `url` and `sha256` in the tap repo, and opens
-a PR (or commits directly) using a fine-grained PAT with write access to the tap only.
+`brew bump-formula-pr` targets homebrew-core, so a tap needs its own path. The `homebrew`
+job in `release.yml` does it: after `npm publish` succeeds it downloads the published
+tarball from the registry (retrying, since the registry takes a moment to serve a new
+version), hashes it, renders the formula, and commits to the tap with a fine-grained PAT
+that has write access to that repo only.
+
+The digest comes from what the registry actually serves rather than from the local `npm
+pack` output. It costs one download and it proves the publish landed.
 
 ```bash
-# sha256 of a published version, straight from the registry
-npm view gitatlas@0.10.0 dist.tarball dist.integrity
+# the same bump by hand, if the workflow is not available
+curl -fsSL https://registry.npmjs.org/gitatlas/-/gitatlas-0.11.0.tgz -o t.tgz
+shasum -a 256 t.tgz
+node scripts/brew-formula.mjs --version 0.11.0 --sha256 <hex>   # in place, this repo
+node scripts/brew-formula.mjs --version 0.11.0 --sha256 <hex> --out ../homebrew-gitatlas/Formula/gitatlas.rb
 ```
 
-npm reports `integrity` as base64 sha512; Homebrew wants hex sha256, so download the
-tarball and `shasum -a 256` it rather than converting.
+`npm view gitatlas@<version> dist.integrity` reports base64 sha512, which is not what
+Homebrew wants, so hash the downloaded tarball rather than converting.
+
+The renderer refuses to write unless both substitutions hit exactly once. A formula
+carrying a new digest against an old url is an install that fails on a checksum mismatch,
+which is a worse failure than not bumping at all.
 
 ### 5c. homebrew-core later
 
@@ -362,22 +332,82 @@ These are the doc edits that the publish makes true, listed so they are not forg
 ## Ordered checklist
 
 1. ~~Decide the published name.~~ Done: `gitatlas`, see Phase 0.
-2. Create the GitHub repo, push `main`, confirm the `repository` field matches.
-3. Add `tsconfig.build.json`, `scripts/build.mjs` (tsc plus the template copy), and the
-   `build` / `prepack` scripts.
-4. Fix the two `__dirname` paths that break under `dist/` (viewer template, site bin).
-5. Make `bin/gitatlas.js` prefer `dist/` and fall back to `tsx` plus sources.
-6. Update `package.json`: drop `private`, add `files`, repo metadata, `publishConfig`.
-7. `npm pack --dry-run`, audit the file list, install the tarball globally, run all six
-   commands from outside the repo on Node 22 and 24.
-8. CHANGELOG `Unreleased` becomes `0.10.0`; bump `version`; tag `v0.10.0`.
-9. Add `release.yml`; configure npm trusted publishing or `NPM_TOKEN`.
-10. Push the tag, confirm the publish and the provenance attestation on npmjs.com.
-11. Verify `npx gitatlas extract .` on a clean machine.
-12. Create `OWNER/homebrew-gitatlas`, add the formula, `brew audit --strict --online` and
-    `brew test` on macOS or Linux, push.
-13. Wire the tap bump into the release workflow.
-14. Do the Phase 6 doc pass.
+2. ~~Create the GitHub repo, push `main`, confirm the `repository` field matches.~~ Done.
+3. ~~Add `tsconfig.build.json`, `scripts/build.mjs` (tsc plus the template copy), and the
+   `build` / `prepack` scripts.~~ Done.
+4. ~~Fix the two `__dirname` paths that break under `dist/` (viewer template, site bin).~~
+   Done: both walk up to the package root instead of counting `..` segments.
+5. ~~Make `bin/gitatlas.js` prefer `dist/` and fall back to `tsx` plus sources.~~ Done.
+6. ~~Update `package.json`: drop `private`, add `files`, repo metadata, `publishConfig`.~~
+   Done.
+7. ~~Audit the file list, install the tarball globally, run all six commands from outside
+   the repo.~~ Done, and now automated as the smoke test in `release.yml`.
+8. ~~CHANGELOG `Unreleased` becomes `0.10.0`; bump `version`.~~ Done; 0.10.0 is on npm.
+   Note it was published by hand, so there is no `v0.10.0` tag.
+9. ~~Add `release.yml`.~~ Done. Still to do: set `NPM_TOKEN` (or switch the account to
+   trusted publishing and drop the `NODE_AUTH_TOKEN` env from the publish step).
+10. ~~Wire the tap bump into the release workflow.~~ Done: the `homebrew` job, gated on
+    `HOMEBREW_TAP_TOKEN` being present so a missing tap skips instead of failing.
+11. Create `adityaarakeri/homebrew-gitatlas`, copy the formula in, `brew audit --strict
+    --online` and `brew test` on macOS or Linux, push. Set `HOMEBREW_TAP_TOKEN`.
+12. Tag `v0.11.0`, push it, confirm the publish, the provenance attestation on npmjs.com,
+    and the tap commit.
+13. Verify `npx gitatlas extract .` and `brew install adityaarakeri/gitatlas/gitatlas` on a
+    clean machine.
+14. Do the Phase 6 doc pass, including the brew line in the README quick start and on
+    `docs/index.html`. Both are deliberately still npm-only: advertising an install command
+    before the tap exists is a 404 for whoever tries it first.
+
+---
+
+## Operating the pipeline
+
+**Secrets** (repo settings, Actions secrets):
+
+| Secret | Used by | What it is |
+| --- | --- | --- |
+| `NPM_TOKEN` | `publish` | Granular npm access token scoped to the `gitatlas` package. Not needed if the npm account uses trusted publishing. |
+| `HOMEBREW_TAP_TOKEN` | `homebrew` | Fine-grained PAT with contents:write on `adityaarakeri/homebrew-gitatlas` and nothing else. Absent means the formula bump is skipped with a notice. |
+
+**Creating the tap**, once, from a machine with `git` and this repo checked out:
+
+```bash
+gh repo create adityaarakeri/homebrew-gitatlas --public \
+  --description "Homebrew tap for gitatlas"
+git clone https://github.com/adityaarakeri/homebrew-gitatlas
+mkdir -p homebrew-gitatlas/Formula
+cp packaging/homebrew/gitatlas.rb homebrew-gitatlas/Formula/gitatlas.rb
+cd homebrew-gitatlas && git add . && git commit -m "gitatlas 0.10.0" && git push
+```
+
+The repo name has to be `homebrew-gitatlas` exactly; that prefix is how
+`brew install adityaarakeri/gitatlas/gitatlas` resolves.
+
+**Verifying the formula** on macOS or Linux, before or after pushing the tap:
+
+```bash
+brew install --build-from-source ./packaging/homebrew/gitatlas.rb
+brew test gitatlas
+brew audit --strict --online gitatlas
+```
+
+**Cutting a release:**
+
+```bash
+# 1. version and notes
+npm version 0.12.0 --no-git-tag-version    # or edit package.json
+# fold the CHANGELOG Unreleased block into a dated 0.12.0 section
+git commit -am "gitatlas 0.12.0"
+git push
+
+# 2. tag; everything after this is the workflow's job
+git tag v0.12.0
+git push origin v0.12.0
+```
+
+The tag has to match `package.json` or the workflow fails on its first step, before
+anything is built. After it finishes, refresh this repo's copy of the formula with the
+command the `homebrew` job prints.
 
 ## Risks
 
