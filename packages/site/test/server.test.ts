@@ -38,7 +38,12 @@ test("importing the server module has no listener or filesystem side effects", a
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "gitatlas-import-"));
   const cacheDir = path.join(root, "cache");
   const port = await reservePort();
-  const script = [
+  // A real file, not --eval: named-export interop for a tsx-transpiled TS
+  // module is only reliably synthesized for an import() with a real caller
+  // module URL. Under --eval (no caller URL) Node 22 collapses the module to
+  // just `default`, unlike Node 24, which carries the named export too.
+  const probeScript = path.join(root, "probe.mjs");
+  fs.writeFileSync(probeScript, [
     'import net from "node:net";',
     `process.env.PORT = ${JSON.stringify(String(port))};`,
     `process.env.GITATLAS_SITE_CACHE_DIR = ${JSON.stringify(cacheDir)};`,
@@ -47,14 +52,13 @@ test("importing the server module has no listener or filesystem side effects", a
     "const probe = net.createServer();",
     `await new Promise((resolve, reject) => probe.once("error", reject).listen(${port}, "127.0.0.1", resolve));`,
     'await new Promise((resolve, reject) => probe.close((error) => error ? reject(error) : resolve()));',
-  ].join("\n");
+  ].join("\n"));
 
   try {
     const result = spawnSync(process.execPath, [
       "--liftoff-only",
       "--import", "tsx",
-      "--input-type=module",
-      "--eval", script,
+      probeScript,
     ], { cwd: process.cwd(), encoding: "utf8", timeout: 5_000 });
     if (result.error) throw result.error;
     assert.equal(result.status, 0, result.stderr);
