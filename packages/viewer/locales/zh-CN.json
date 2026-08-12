@@ -1,0 +1,89 @@
+{
+  "locale": "zh-CN",
+  "name": "简体中文",
+  "reviewed": false,
+  "maintainer": null,
+  "source": "en",
+  "strings": {
+    "doc.title": "gitatlas 系统地图",
+
+    "a11y.map": "可缩放的系统地图",
+    "a11y.palette.open": "打开跳转面板",
+    "a11y.theme": "主题",
+    "a11y.locale": "语言",
+    "a11y.parent": "返回上一层",
+    "a11y.search": "筛选当前层级的节点",
+    "a11y.palette.dialog": "跳转到任意位置",
+    "a11y.palette.input": "全局搜索",
+    "a11y.detail.close": "关闭详情面板",
+    "a11y.scale": "缩放层级",
+    "a11y.scale.goto": "前往{level}层",
+
+    "theme.dark": "镜筒",
+    "theme.light": "毛玻璃",
+
+    "plate.groupname": { "other": "{group} · {n} 个仓库" },
+    "search.placeholder": "筛选当前层级",
+    "palette.placeholder": "跳转到仓库、文件或符号",
+
+    "empty.title": "此仓库尚未索引到任何内容。",
+    "empty.body": "gitatlas 目前支持 21 种语言。其他语言在对应的提取器完成之前显示为空视图。",
+
+    "stop.tree": "树形",
+    "stop.group": "分组",
+    "stop.module": "模块",
+    "stop.symbol": "符号",
+
+    "parent.tree": "返回树形视图",
+    "parent.group": "返回分组视图",
+    "parent.modules": "返回模块视图",
+
+    "badge.sym": "{n} 符号",
+    "badge.files": { "other": "{n} 个文件" },
+
+    "tree.open.repo": "打开 {name} 的模块地图",
+    "tree.open.dir": "打开限定在 {dir} 的模块地图",
+
+    "neighborhood.fallback": "邻域 {n}",
+
+    "kind.repo": "仓库",
+    "kind.module": "模块",
+    "kind.directory": "目录",
+    "kind.file": "文件",
+    "kind.function": "函数",
+    "kind.class": "类",
+    "kind.method": "方法",
+    "kind.interface": "接口",
+    "kind.type": "类型",
+    "kind.enum": "枚举",
+    "kind.variable": "变量",
+
+    "meta.languages": "语言",
+    "meta.modules": "模块数",
+    "meta.symbols": "符号数",
+    "meta.path": "路径",
+    "meta.lines": "行数",
+    "meta.neighborhood": "邻域",
+    "meta.importDegree": "导入度",
+    "meta.hub": "枢纽",
+    "meta.kind": "种类",
+    "meta.line": "行号",
+    "meta.exported": "已导出",
+    "meta.references": "引用数",
+
+    "value.noneSupported": "无受支持的语言",
+    "value.na": "不适用",
+    "value.yes": "是",
+    "value.no": "否",
+    "value.hubYes": "是，改动在此扩散最广",
+    "value.noRefs": "在此仓库中未找到",
+
+    "legend.tree.hint": "整个系统就是一棵树。点按仓库或目录可折叠或展开；旁边的 → 会打开限定在该位置的地图。点按文件可查看其中的符号。",
+    "legend.crossRepo": "跨仓库连线将在 v0.3 中加入。",
+    "legend.calls": "金色连线表示调用关系：谁真正调用了谁。",
+    "legend.dashed": "┄ 虚线：在此仓库中未找到引用",
+    "legend.hub": "◎ 红色外环：枢纽，改动在此扩散最广",
+    "legend.neighborhoods": "阴影区域是邻域：这些文件彼此导入的频率高于其他文件。",
+    "legend.tap": "点按节点可打开它。双击画布可返回上一层。"
+  }
+}

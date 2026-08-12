@@ -97,6 +97,18 @@
   #theme-seg button:hover { color: var(--etch); }
   #theme-seg button:focus-visible { outline: 2px solid var(--index); outline-offset: -2px; }
 
+  /* one catalog per generated file is the default; the picker only appears
+     when the file carries more than one language */
+  #locale-sel {
+    background: none; border: 1px solid var(--etch-faint); color: var(--etch-dim);
+    font-family: var(--disp); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.1em; padding: 6px 8px; cursor: pointer;
+    appearance: none; text-align: center;
+  }
+  #locale-sel:hover { color: var(--etch); }
+  #locale-sel:focus-visible { outline: 2px solid var(--index); outline-offset: -2px; }
+  #locale-sel option { background: var(--plate); color: var(--etch); }
+
   /* rack-focus card: the way back up */
   #parent {
     position: absolute; top: 92px; left: 22px; z-index: 11;
@@ -276,6 +288,10 @@
     #detail { width: 86vw; }
     #search { width: 130px; left: auto; right: 16px; transform: none; }
     #plate .sub { display: none; }
+    /* the plate is a shrink-to-fit flex row, so it needs a ceiling before it
+       will wrap; without one the locale picker pushes it off a phone screen */
+    #plate { max-width: calc(100vw - 44px); flex-wrap: wrap; gap: 10px; }
+    #locale-sel { max-width: 118px; }
     .stop { padding: 0 12px; }
     .stop .crumb { max-width: 76px; }
     #palette {
@@ -303,7 +319,7 @@
 </style>
 </head>
 <body>
-<div id="canvas-wrap"><svg id="svg" role="application" aria-label="Zoomable map of your system"></svg></div>
+<div id="canvas-wrap"><svg id="svg" role="application" data-i18n-aria="a11y.map" aria-label="Zoomable map of your system"></svg></div>
 <span class="bracket tl"></span><span class="bracket tr"></span>
 <span class="bracket bl"></span><span class="bracket br"></span>
 
@@ -312,27 +328,30 @@
     <h1>git<em>atlas</em></h1>
     <div class="sub" id="groupname"></div>
   </div>
-  <button id="pal-hint" aria-label="Open jump palette" style="background:none;border:1px solid var(--etch-faint);color:var(--etch-dim);font-family:var(--mono);font-size:11px;padding:6px 9px;cursor:pointer">⌘K</button>
-  <div id="theme-seg" role="group" aria-label="Theme">
-    <button type="button" data-t="dark" aria-pressed="false">BARREL</button>
-    <button type="button" data-t="light" aria-pressed="false">GLASS</button>
+  <button id="pal-hint" data-i18n-aria="a11y.palette.open" aria-label="Open jump palette" style="background:none;border:1px solid var(--etch-faint);color:var(--etch-dim);font-family:var(--mono);font-size:11px;padding:6px 9px;cursor:pointer">⌘K</button>
+  <div id="theme-seg" role="group" data-i18n-aria="a11y.theme" aria-label="Theme">
+    <button type="button" data-t="dark" data-i18n="theme.dark" aria-pressed="false">BARREL</button>
+    <button type="button" data-t="light" data-i18n="theme.light" aria-pressed="false">GLASS</button>
   </div>
+  <select id="locale-sel" data-i18n-aria="a11y.locale" aria-label="Language"></select>
 </div>
 
-<button id="parent" aria-label="Go up one level">
+<button id="parent" data-i18n-aria="a11y.parent" aria-label="Go up one level">
   <span class="arrow">↑</span>
   <span><span class="lvl" id="p-lvl"></span><span class="name" id="p-name"></span></span>
 </button>
 
-<input id="search" type="text" placeholder="Filter this level" aria-label="Filter nodes at this level">
+<input id="search" type="text" data-i18n-ph="search.placeholder" placeholder="Filter this level"
+  data-i18n-aria="a11y.search" aria-label="Filter nodes at this level">
 
-<div id="palette" role="dialog" aria-label="Jump to anything" style="display:none">
-  <input id="pal-input" type="text" placeholder="Jump to a repo, file, or symbol" aria-label="Search everything">
+<div id="palette" role="dialog" data-i18n-aria="a11y.palette.dialog" aria-label="Jump to anything" style="display:none">
+  <input id="pal-input" type="text" data-i18n-ph="palette.placeholder" placeholder="Jump to a repo, file, or symbol"
+    data-i18n-aria="a11y.palette.input" aria-label="Search everything">
   <ul id="pal-list"></ul>
 </div>
 
 <aside id="detail" aria-live="polite">
-  <button class="close-btn" id="detail-close" aria-label="Close readout">✕</button>
+  <button class="close-btn" id="detail-close" data-i18n-aria="a11y.detail.close" aria-label="Close readout">✕</button>
   <div class="eyebrow" id="d-kind"></div>
   <h2 id="d-title"></h2>
   <dl id="d-meta"></dl>
@@ -341,28 +360,125 @@
 <div id="empty" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
   z-index:8; text-align:center; color:var(--etch-dim); font-size:12px; max-width:320px; line-height:1.7;
   background:var(--plate-glass); border:1px solid var(--etch-faint); padding:16px 20px;">
-  Nothing indexed in this repo yet.<br>
-  gitatlas reads 21 languages today. Other languages show an empty view until their extractor lands.
+  <span data-i18n="empty.title">Nothing indexed in this repo yet.</span><br>
+  <span data-i18n="empty.body">gitatlas reads 21 languages today. Other languages show an empty view until their extractor lands.</span>
 </div>
 <div id="bottombar">
   <div id="legend" aria-hidden="true"></div>
-  <nav id="scale" aria-label="Zoom depth"></nav>
+  <nav id="scale" data-i18n-aria="a11y.scale" aria-label="Zoom depth"></nav>
   <div id="bb-spacer" style="width:340px; flex:none"></div>
 </div>
 
 <script>
 window.GITATLAS_DATA = /*__DATA__*/null;
+window.GITATLAS_LOCALES = /*__LOCALES__*/null;
+window.GITATLAS_LANG = /*__LANG__*/null;
 </script>
 <script>
 (function () {
   const DATA = window.GITATLAS_DATA;
   const STOPS = [
-    { lvl: -1, lbl: "TREE" },
-    { lvl: 0, lbl: "GROUP" },
-    { lvl: 2, lbl: "MODULE" },
-    { lvl: 3, lbl: "SYMBOL" },
+    { lvl: -1, key: "stop.tree" },
+    { lvl: 0, key: "stop.group" },
+    { lvl: 2, key: "stop.module" },
+    { lvl: 3, key: "stop.symbol" },
   ];
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ── i18n ────────────────────────────────────────────────────
+  // Catalogs are baked in at extract time, one flat key -> string map each.
+  // English is always present and is the fallback for a key a catalog is
+  // missing, but the key-parity test means a shipped catalog never has holes.
+  const CATALOGS = window.GITATLAS_LOCALES || {};
+  const EN = (CATALOGS.en && CATALOGS.en.strings) || {};
+
+  function pickLocale() {
+    const available = Object.keys(CATALOGS);
+    if (available.length === 0) return "en";
+    const wanted = [window.GITATLAS_LANG, ...(navigator.languages || [navigator.language || "en"])];
+    for (const tag of wanted) {
+      if (!tag) continue;
+      if (CATALOGS[tag]) return tag;
+      // "pt-PT" falls back to a "pt-BR" catalog only through the base tag,
+      // so "pt" matches "pt-BR" but "zh-TW" never silently becomes "zh-CN".
+      const base = String(tag).split("-")[0];
+      const hit = available.find((code) => code === base || code.split("-")[0] === base);
+      if (hit) return hit;
+    }
+    return CATALOGS.en ? "en" : available[0];
+  }
+
+  let locale = pickLocale();
+  let plurals = null;
+  function pluralCategory(n) {
+    if (!plurals) {
+      try { plurals = new Intl.PluralRules(locale); }
+      catch { plurals = new Intl.PluralRules("en"); }
+    }
+    return plurals.select(Number(n));
+  }
+
+  /**
+   * t("badge.files", { n: 3 }) -> "3 files"
+   * A catalog value is either a string or a map of CLDR plural categories.
+   * Placeholders are plain {name}; this is not ICU MessageFormat on purpose.
+   */
+  function t(key, vars) {
+    const active = (CATALOGS[locale] && CATALOGS[locale].strings) || {};
+    let value = active[key];
+    if (value == null) value = EN[key];
+    if (value == null) return key;
+    if (typeof value === "object") {
+      const cat = pluralCategory(vars && vars.n);
+      value = value[cat] != null ? value[cat] : value.other;
+    }
+    return String(value).replace(/\{(\w+)\}/g, (m, name) =>
+      vars && vars[name] != null ? String(vars[name]) : m);
+  }
+
+  // schema values (repo, module, function, ...) are data, not copy: the JSON
+  // keeps emitting English and only the display side is translated
+  const kindLabel = (kind) => t("kind." + kind);
+
+  // catalog text and indexed symbol names both reach innerHTML below
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function applyStaticStrings() {
+    document.documentElement.setAttribute("lang", locale);
+    document.title = t("doc.title");
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      el.textContent = t(el.dataset.i18n);
+    });
+    document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
+      el.setAttribute("aria-label", t(el.dataset.i18nAria));
+    });
+    document.querySelectorAll("[data-i18n-ph]").forEach((el) => {
+      el.setAttribute("placeholder", t(el.dataset.i18nPh));
+    });
+    document.getElementById("groupname").textContent =
+      t("plate.groupname", { group: DATA.manifest.group, n: DATA.manifest.repos.length });
+  }
+
+  function setupLocalePicker() {
+    const sel = document.getElementById("locale-sel");
+    const codes = Object.keys(CATALOGS);
+    // nothing to pick between: keep the plate uncluttered
+    if (codes.length < 2) { sel.style.display = "none"; return; }
+    codes.forEach((code) => {
+      const opt = document.createElement("option");
+      opt.value = code;
+      opt.textContent = CATALOGS[code].name || code;
+      opt.selected = code === locale;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener("change", () => {
+      locale = sel.value;
+      plurals = null;
+      applyStaticStrings();
+      render();
+    });
+  }
 
   // ── theme ──
   const root = document.documentElement;
@@ -394,9 +510,6 @@ window.GITATLAS_DATA = /*__DATA__*/null;
   const zoom = d3.zoom().scaleExtent([0.05, 4]).on("zoom", (e) => zoomLayer.attr("transform", e.transform));
   svg.call(zoom).on("dblclick.zoom", null);
 
-  document.getElementById("groupname").textContent =
-    DATA.manifest.group + " · " + DATA.manifest.repos.length + " repos";
-
   function currentLevel() { return mode === "tree" ? -1 : path.length === 0 ? 0 : path.length === 1 ? 2 : 3; }
 
   function navigate(newPath, newMode, presetFilter) {
@@ -425,7 +538,11 @@ window.GITATLAS_DATA = /*__DATA__*/null;
         .map((r) => ({
           id: r.name, label: r.name, kind: "repo",
           r: 26 + Math.sqrt(r.symbolCount) * 4, x: r.x, y: r.y,
-          meta: { languages: (r.languages && r.languages.length ? r.languages.join(', ') : 'none supported'), modules: r.moduleCount, symbols: r.symbolCount },
+          meta: {
+            [t("meta.languages")]: (r.languages && r.languages.length ? r.languages.join(', ') : t("value.noneSupported")),
+            [t("meta.modules")]: r.moduleCount,
+            [t("meta.symbols")]: r.symbolCount,
+          },
         }));
       const ids = new Set(nodes.map((n) => n.id));
       const links = (DATA.manifest.edges || [])
@@ -436,16 +553,21 @@ window.GITATLAS_DATA = /*__DATA__*/null;
     if (path.length === 1) {
       const g = graphs[path[0]];
       const nbLabel = (n) => (g.neighborhoodLabels && g.neighborhoodLabels[n] != null)
-        ? g.neighborhoodLabels[n] : "neighborhood " + n;
+        ? g.neighborhoodLabels[n] : t("neighborhood.fallback", { n });
       const nodes = g.modules
         .filter((m) => !f || m.path.toLowerCase().includes(f))
         .map((m) => ({
           id: m.id, label: m.path.split("/").pop(), full: m.path, kind: "module",
           r: 12 + Math.sqrt(m.symbolCount) * 5, x: m.x, y: m.y,
           n: m.neighborhood, hub: !!m.hub,
-          meta: { path: m.path, symbols: m.symbolCount, lines: m.loc,
-            neighborhood: m.neighborhood != null ? nbLabel(m.neighborhood) : "n/a",
-            "import degree": m.degree ?? 0, hub: m.hub ? "yes, changes ripple widest here" : "no" },
+          meta: {
+            [t("meta.path")]: m.path,
+            [t("meta.symbols")]: m.symbolCount,
+            [t("meta.lines")]: m.loc,
+            [t("meta.neighborhood")]: m.neighborhood != null ? nbLabel(m.neighborhood) : t("value.na"),
+            [t("meta.importDegree")]: m.degree ?? 0,
+            [t("meta.hub")]: m.hub ? t("value.hubYes") : t("value.no"),
+          },
         }));
       const ids = new Set(nodes.map((n) => n.id));
       const links = g.edges
@@ -462,8 +584,10 @@ window.GITATLAS_DATA = /*__DATA__*/null;
         id: s.id, label: s.name, kind: s.kind,
         r: s.kind === "class" ? 18 : 10, x: s.x, y: s.y,
         meta: {
-          kind: s.kind, line: s.line, exported: s.exported ? "yes" : "no",
-          references: s.refCount === 0 ? "none found in this repo" : (s.refCount ?? "n/a"),
+          [t("meta.kind")]: kindLabel(s.kind),
+          [t("meta.line")]: s.line,
+          [t("meta.exported")]: s.exported ? t("value.yes") : t("value.no"),
+          [t("meta.references")]: s.refCount === 0 ? t("value.noRefs") : (s.refCount ?? t("value.na")),
         },
         parent: s.parent,
         unused: s.refCount === 0,
@@ -582,9 +706,9 @@ window.GITATLAS_DATA = /*__DATA__*/null;
     const foldable = (d) =>
       (d.data.type === "repo" || d.data.type === "dir") && (d.data.children || []).length > 0;
     const badge = (d) =>
-      d.data.type === "repo" ? [d.data.langs, d.data.symbolCount + " sym"].filter(Boolean).join(" · ") :
-      d.data.type === "dir" ? d.data.fileCount + (d.data.fileCount === 1 ? " file" : " files") :
-      d.data.type === "file" ? d.data.symbolCount + " sym" : "";
+      d.data.type === "repo" ? [d.data.langs, t("badge.sym", { n: d.data.symbolCount })].filter(Boolean).join(" · ") :
+      d.data.type === "dir" ? t("badge.files", { n: d.data.fileCount }) :
+      d.data.type === "file" ? t("badge.sym", { n: d.data.symbolCount }) : "";
 
     zoomLayer.append("g").selectAll("path").data(root.links()).join("path")
       .attr("class", "link")
@@ -645,8 +769,8 @@ window.GITATLAS_DATA = /*__DATA__*/null;
       .attr("tabindex", 0).attr("role", "button")
       .text("→");
     glyph.append("title").text((d) => d.data.type === "repo"
-      ? "Open the module map of " + d.data.name
-      : "Open the module map scoped to " + d.data.dir);
+      ? t("tree.open.repo", { name: d.data.name })
+      : t("tree.open.dir", { dir: d.data.dir }));
     glyph.on("click", (e, d) => { e.stopPropagation(); openMap(d); });
     glyph.on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); openMap(d); } });
 
@@ -680,7 +804,7 @@ window.GITATLAS_DATA = /*__DATA__*/null;
       .attr("class", "hull-label")
       .text((n) => {
         const lbl = g0 && g0.neighborhoodLabels && g0.neighborhoodLabels[n] != null
-          ? g0.neighborhoodLabels[n] : "neighborhood " + n;
+          ? g0.neighborhoodLabels[n] : t("neighborhood.fallback", { n });
         const dup = g0 && Object.values(g0.neighborhoodLabels || {}).filter((v) => v === lbl).length > 1;
         return dup ? lbl + " · " + (Number(n) + 1) : lbl;
       });
@@ -767,13 +891,13 @@ window.GITATLAS_DATA = /*__DATA__*/null;
     if (mode === "tree") { card.style.display = "none"; return; }
     card.style.display = "flex";
     if (path.length === 0) {
-      document.getElementById("p-lvl").textContent = "BACK TO TREE";
+      document.getElementById("p-lvl").textContent = t("parent.tree");
       document.getElementById("p-name").textContent = DATA.manifest.group;
     } else if (path.length === 1) {
-      document.getElementById("p-lvl").textContent = "BACK TO GROUP";
+      document.getElementById("p-lvl").textContent = t("parent.group");
       document.getElementById("p-name").textContent = DATA.manifest.group;
     } else {
-      document.getElementById("p-lvl").textContent = "BACK TO MODULES";
+      document.getElementById("p-lvl").textContent = t("parent.modules");
       document.getElementById("p-name").textContent = path[0];
     }
   }
@@ -788,7 +912,7 @@ window.GITATLAS_DATA = /*__DATA__*/null;
       btn.type = "button";
       btn.className = "stop" + (s.lvl === lvl ? " active" : s.lvl < lvl ? " reachable" : "");
       const tick = document.createElement("span"); tick.className = "tick";
-      const lbl = document.createElement("span"); lbl.className = "lbl"; lbl.textContent = s.lbl;
+      const lbl = document.createElement("span"); lbl.className = "lbl"; lbl.textContent = t(s.key);
       btn.append(tick, lbl);
       if (s.lvl === 2 && path[0]) {
         const c = document.createElement("span"); c.className = "crumb"; c.textContent = path[0];
@@ -800,7 +924,7 @@ window.GITATLAS_DATA = /*__DATA__*/null;
         btn.appendChild(c);
       }
       if (s.lvl < lvl) {
-        btn.setAttribute("aria-label", "Go to " + s.lbl.toLowerCase() + " level");
+        btn.setAttribute("aria-label", t("a11y.scale.goto", { level: t(s.key).toLowerCase() }));
         btn.addEventListener("click", () =>
           s.lvl === -1 ? navigate([], "tree") : navigate(s.lvl === 0 ? [] : [path[0]]));
       } else {
@@ -814,10 +938,10 @@ window.GITATLAS_DATA = /*__DATA__*/null;
   function renderLegend(nodes) {
     if (mode === "tree") {
       document.getElementById("legend").innerHTML =
-        '<div><span class="swatch" style="background:var(--index)"></span>repo</div>' +
-        '<div><span class="swatch" style="background:var(--etch-dim)"></span>directory</div>' +
-        '<div><span class="swatch" style="background:var(--coating)"></span>file</div>' +
-        '<div style="margin-top:6px">The whole system as one tree. Tap a repo or directory to fold or unfold it; the → beside it opens its map, scoped to that spot. Tap a file to see its symbols.</div>';
+        `<div><span class="swatch" style="background:var(--index)"></span>${esc(kindLabel("repo"))}</div>` +
+        `<div><span class="swatch" style="background:var(--etch-dim)"></span>${esc(kindLabel("directory"))}</div>` +
+        `<div><span class="swatch" style="background:var(--coating)"></span>${esc(kindLabel("file"))}</div>` +
+        `<div style="margin-top:6px">${esc(t("legend.tree.hint"))}</div>`;
       return;
     }
     const kinds = [...new Set(nodes.map((n) => n.kind))];
@@ -825,21 +949,22 @@ window.GITATLAS_DATA = /*__DATA__*/null;
       k === "repo" || k === "class" ? "--index" :
       k === "module" || k === "variable" ? "--coating" :
       k === "function" || k === "method" ? "--dof" : "--etch-dim";
+    const note = (key) => `<div style="margin-top:6px">${esc(t(key))}</div>`;
     document.getElementById("legend").innerHTML =
-      kinds.map((k) => `<div><span class="swatch" style="background:var(${colorVar(k)})"></span>${k}</div>`).join("") +
-      (currentLevel() === 0 ? '<div style="margin-top:6px">Cross-repo edges arrive in v0.3.</div>' : "") +
-      (currentLevel() === 3 ? '<div style="margin-top:6px">Gold lines are calls: who actually invokes whom.</div>' : "") +
-      (currentLevel() === 3 && nodes.some((n) => n.unused) ? '<div style="margin-top:6px">┄ dashed: no references found in this repo</div>' : "") +
-      (currentLevel() === 2 && nodes.some((n) => n.hub) ? '<div style="margin-top:6px">◎ red outer ring: hub, changes ripple widest here</div>' : "") +
-      (currentLevel() === 2 && nodes.some((n) => n.n != null) ? '<div style="margin-top:6px">Shaded areas are neighborhoods: files that import each other more than the rest.</div>' : "") +
-      '<div style="margin-top:6px">Tap a node to open it. Double-tap the canvas to back out.</div>';
+      kinds.map((k) => `<div><span class="swatch" style="background:var(${colorVar(k)})"></span>${esc(kindLabel(k))}</div>`).join("") +
+      (currentLevel() === 0 ? note("legend.crossRepo") : "") +
+      (currentLevel() === 3 ? note("legend.calls") : "") +
+      (currentLevel() === 3 && nodes.some((n) => n.unused) ? note("legend.dashed") : "") +
+      (currentLevel() === 2 && nodes.some((n) => n.hub) ? note("legend.hub") : "") +
+      (currentLevel() === 2 && nodes.some((n) => n.n != null) ? note("legend.neighborhoods") : "") +
+      note("legend.tap");
   }
 
   function openDetail(d) {
-    document.getElementById("d-kind").textContent = d.kind;
+    document.getElementById("d-kind").textContent = kindLabel(d.kind);
     document.getElementById("d-title").textContent = d.full || d.label;
     document.getElementById("d-meta").innerHTML = Object.entries(d.meta || {})
-      .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+      .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
     document.getElementById("detail").classList.add("open");
   }
   function closeDetail() { document.getElementById("detail").classList.remove("open"); }
@@ -867,7 +992,7 @@ window.GITATLAS_DATA = /*__DATA__*/null;
       : palEntries.slice(0, 12);
     palIdx = 0;
     palList.innerHTML = hits.map((e, i) =>
-      `<li data-i="${i}" class="${i === 0 ? "sel" : ""}"><span class="k">${e.kind}</span><span class="n">${e.name}</span><span class="s">${e.sub}</span></li>`).join("");
+      `<li data-i="${i}" class="${i === 0 ? "sel" : ""}"><span class="k">${esc(kindLabel(e.kind))}</span><span class="n">${esc(e.name)}</span><span class="s">${esc(e.sub)}</span></li>`).join("");
     palList.querySelectorAll("li").forEach((li) => {
       li.addEventListener("click", () => palGo(hits[Number(li.dataset.i)]));
     });
@@ -906,6 +1031,9 @@ window.GITATLAS_DATA = /*__DATA__*/null;
   });
   document.getElementById("pal-hint").addEventListener("click", palOpen);
   palette.addEventListener("click", (e) => { if (e.target === palette) palClose(); });
+
+  applyStaticStrings();
+  setupLocalePicker();
 
   document.getElementById("search").addEventListener("input", (e) => { filter = e.target.value; render(); });
   let resizeTimer;

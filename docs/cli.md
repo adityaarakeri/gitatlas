@@ -21,6 +21,7 @@ One binary, six commands. From a clone, `npm run <command> --` invokes the same 
 | --- | --- |
 | `--out <dir>` | Where graphs and `index.html` are written (default `<folder>/.gitatlas`) |
 | `--ref <branch\|tag\|commit>` | Which commit of a GitHub target to map (default: the default branch) |
+| `--lang <code>` | Which language the viewer opens in (default: the reader's browser language) |
 | `--ignore <glob>` | Skip matching paths. Repeatable |
 | `--submodules split\|absorb\|skip` | How git submodules are treated (default `split`) |
 | `--depth N` | Hard cap on discovery depth |
@@ -140,6 +141,20 @@ gitatlas brief --target expressjs/express --ref v4.18.2
 `--target` is path arithmetic only. It never clones or fetches, because a map that was never extracted cannot be read; if nothing is there yet, the command says so and names the directory it looked in.
 
 Discovery scans for `.git` markers with no depth limit, stopping inside each repo it finds. The brake is a scanned-directory budget (25,000 by default) so pointing it at your home directory by accident will not run away. Raise it with `--max-scan 100000`, or cap depth explicitly with `--depth 3` if you want the old-fashioned limit.
+
+## The viewer's language
+
+The map ships every UI catalog it has, so one file can be opened by a mixed-language team. On open it picks the reader's browser language and falls back to English; a picker beside the theme toggle switches it, and appears only when a file carries more than one language.
+
+```bash
+npm run extract -- ~/work/repos                  # opens in the reader's language
+npm run extract -- ~/work/repos --lang zh-CN     # opens in Chinese for everyone
+npm run extract -- ~/work/repos --lang en        # pin English regardless of the browser
+```
+
+Available codes today: `en`, `zh-CN`, `ja`, `es`, `pt-BR`. An unknown code is an error that lists the ones that exist, rather than a silent fall back to English.
+
+This is display only. Graph JSON is byte-identical whatever you pass, schema values (`repo`, `module`, `function`) stay English on the wire, and layout coordinates come from code structure, so `--lang` never changes what `check` compares or what an agent reads. Only English is human-reviewed today; see [docs/i18n.md](i18n.md) for the status table and how to add a locale.
 
 ## Git submodules
 

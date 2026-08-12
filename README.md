@@ -104,6 +104,8 @@ Four zoom levels, and the camera flies between them.
 
 <img alt="Command palette searching for render, returning results from both the click and flask repositories" src="docs/palette.jpg">
 
+**It opens in the reader's language.** The map carries its UI in English, Chinese, Japanese, Spanish, and Portuguese, and picks one from the browser when it opens, with a picker beside the theme toggle. `gitatlas extract --lang zh-CN` pins the default instead. Only English is human-reviewed so far; [docs/i18n.md](docs/i18n.md) has the status table and how to add a language. The graph data is unchanged either way, so nothing an agent reads depends on it.
+
 ## Feed it to your coding agent
 
 Agents are brilliant sprinters with amnesia. Every session yours greps around, rebuilds a mental model from scratch, and bills you for it. Hand it the map instead.

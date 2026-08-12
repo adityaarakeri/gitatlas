@@ -1,0 +1,89 @@
+{
+  "locale": "ja",
+  "name": "日本語",
+  "reviewed": false,
+  "maintainer": null,
+  "source": "en",
+  "strings": {
+    "doc.title": "gitatlas システムマップ",
+
+    "a11y.map": "ズームできるシステムマップ",
+    "a11y.palette.open": "ジャンプパレットを開く",
+    "a11y.theme": "テーマ",
+    "a11y.locale": "言語",
+    "a11y.parent": "一つ上の階層へ",
+    "a11y.search": "この階層のノードを絞り込む",
+    "a11y.palette.dialog": "どこへでもジャンプ",
+    "a11y.palette.input": "すべてを検索",
+    "a11y.detail.close": "詳細パネルを閉じる",
+    "a11y.scale": "ズームの深さ",
+    "a11y.scale.goto": "{level}階層へ移動",
+
+    "theme.dark": "鏡筒",
+    "theme.light": "すりガラス",
+
+    "plate.groupname": { "other": "{group} · {n} リポジトリ" },
+    "search.placeholder": "この階層を絞り込む",
+    "palette.placeholder": "リポジトリ、ファイル、シンボルへジャンプ",
+
+    "empty.title": "このリポジトリはまだ何もインデックスされていません。",
+    "empty.body": "gitatlas は現在 21 言語に対応しています。それ以外の言語は、対応する抽出器が入るまで空の表示になります。",
+
+    "stop.tree": "ツリー",
+    "stop.group": "グループ",
+    "stop.module": "モジュール",
+    "stop.symbol": "シンボル",
+
+    "parent.tree": "ツリーに戻る",
+    "parent.group": "グループに戻る",
+    "parent.modules": "モジュールに戻る",
+
+    "badge.sym": "{n} シンボル",
+    "badge.files": { "other": "{n} ファイル" },
+
+    "tree.open.repo": "{name} のモジュールマップを開く",
+    "tree.open.dir": "{dir} に絞ったモジュールマップを開く",
+
+    "neighborhood.fallback": "近傍 {n}",
+
+    "kind.repo": "リポジトリ",
+    "kind.module": "モジュール",
+    "kind.directory": "ディレクトリ",
+    "kind.file": "ファイル",
+    "kind.function": "関数",
+    "kind.class": "クラス",
+    "kind.method": "メソッド",
+    "kind.interface": "インターフェース",
+    "kind.type": "型",
+    "kind.enum": "列挙型",
+    "kind.variable": "変数",
+
+    "meta.languages": "言語",
+    "meta.modules": "モジュール数",
+    "meta.symbols": "シンボル数",
+    "meta.path": "パス",
+    "meta.lines": "行数",
+    "meta.neighborhood": "近傍",
+    "meta.importDegree": "インポート次数",
+    "meta.hub": "ハブ",
+    "meta.kind": "種別",
+    "meta.line": "行",
+    "meta.exported": "エクスポート",
+    "meta.references": "参照数",
+
+    "value.noneSupported": "対応言語なし",
+    "value.na": "該当なし",
+    "value.yes": "はい",
+    "value.no": "いいえ",
+    "value.hubYes": "はい。変更の影響がここから最も広がります",
+    "value.noRefs": "このリポジトリ内には見つかりません",
+
+    "legend.tree.hint": "システム全体を一本のツリーとして表示しています。リポジトリやディレクトリをタップすると開閉します。横の → はその位置に絞ったマップを開きます。ファイルをタップするとシンボルが見られます。",
+    "legend.crossRepo": "リポジトリ間のエッジは v0.3 で入ります。",
+    "legend.calls": "金色の線は呼び出しです。実際に誰が誰を呼んでいるかを示します。",
+    "legend.dashed": "┄ 破線: このリポジトリ内に参照が見つかりません",
+    "legend.hub": "◎ 赤い外周リング: ハブ。変更の影響がここから最も広がります",
+    "legend.neighborhoods": "網かけは近傍です。互いを他より多くインポートし合うファイルの集まりです。",
+    "legend.tap": "ノードをタップすると開きます。キャンバスをダブルタップすると戻ります。"
+  }
+}

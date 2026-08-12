@@ -39,7 +39,7 @@ Data flows one way: extractor -> JSON graph files -> viewer HTML. The pieces com
 - `packages/scoper/` — resolves a stack trace or symbol name into the graph and ranks the surrounding neighborhood. `scope.ts` is pure functions, `cli.ts` is I/O only; mirror that split for new logic.
 - `packages/brief/` — token-budgeted markdown digest of the map for agent context (`brief.ts` pure, `cli.ts` I/O). Budget cuts are always announced in the text, never silent.
 - `packages/mcp/` — dependency-free MCP server over stdio (`server.ts` tool logic, `cli.ts` JSON-RPC framing). Re-verifies source fingerprints before every tool call and flags stale repos inside each result.
-- `packages/viewer/template.html` — the entire viewer: one file, vanilla JS + d3, no framework, no build. Keep it view-source-able.
+- `packages/viewer/template.html` — the entire viewer: one file, vanilla JS + d3, no framework, no build. Keep it view-source-able. `packages/viewer/locales/<code>.json` holds the UI catalogs the extractor bakes in; `en.json` is the source of truth and `docs/i18n.md` is the contributor guide.
 - `bin/gitatlas.js` — global entry; re-execs with `--liftoff-only` on Node 24+, then dispatches to extractor or scoper CLI via `tsx/cjs`.
 - `fixtures/` — small fake repos used by tests and the smoke test; `fixtures/polyglot-lab` has one file per tree-sitter language.
 
@@ -66,6 +66,7 @@ Data flows one way: extractor -> JSON graph files -> viewer HTML. The pieces com
 ## Viewer changes
 
 - Vanilla JS only, single template file. All colors flow through CSS variables; update both themes (`data-theme="dark"` and `"light"`) together.
+- New UI copy goes through `t("key")` and a key in every catalog under `packages/viewer/locales/`, never a bare string literal. Tests fail on a template key with no catalog entry, a catalog key the template never uses, and any locale whose key set has drifted from `en.json`.
 - Visible focus states and `prefers-reduced-motion` support are non-negotiable; test keyboard navigation and a phone viewport.
 - The viewer never simulates layout; it draws the baked coordinates (grid fallback for pre-layout graphs).
 

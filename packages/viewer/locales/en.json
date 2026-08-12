@@ -1,0 +1,89 @@
+{
+  "locale": "en",
+  "name": "English",
+  "reviewed": true,
+  "maintainer": null,
+  "source": "en",
+  "strings": {
+    "doc.title": "gitatlas system map",
+
+    "a11y.map": "Zoomable map of your system",
+    "a11y.palette.open": "Open jump palette",
+    "a11y.theme": "Theme",
+    "a11y.locale": "Language",
+    "a11y.parent": "Go up one level",
+    "a11y.search": "Filter nodes at this level",
+    "a11y.palette.dialog": "Jump to anything",
+    "a11y.palette.input": "Search everything",
+    "a11y.detail.close": "Close readout",
+    "a11y.scale": "Zoom depth",
+    "a11y.scale.goto": "Go to {level} level",
+
+    "theme.dark": "BARREL",
+    "theme.light": "GLASS",
+
+    "plate.groupname": { "one": "{group} · {n} repo", "other": "{group} · {n} repos" },
+    "search.placeholder": "Filter this level",
+    "palette.placeholder": "Jump to a repo, file, or symbol",
+
+    "empty.title": "Nothing indexed in this repo yet.",
+    "empty.body": "gitatlas reads 21 languages today. Other languages show an empty view until their extractor lands.",
+
+    "stop.tree": "TREE",
+    "stop.group": "GROUP",
+    "stop.module": "MODULE",
+    "stop.symbol": "SYMBOL",
+
+    "parent.tree": "BACK TO TREE",
+    "parent.group": "BACK TO GROUP",
+    "parent.modules": "BACK TO MODULES",
+
+    "badge.sym": "{n} sym",
+    "badge.files": { "one": "{n} file", "other": "{n} files" },
+
+    "tree.open.repo": "Open the module map of {name}",
+    "tree.open.dir": "Open the module map scoped to {dir}",
+
+    "neighborhood.fallback": "neighborhood {n}",
+
+    "kind.repo": "repo",
+    "kind.module": "module",
+    "kind.directory": "directory",
+    "kind.file": "file",
+    "kind.function": "function",
+    "kind.class": "class",
+    "kind.method": "method",
+    "kind.interface": "interface",
+    "kind.type": "type",
+    "kind.enum": "enum",
+    "kind.variable": "variable",
+
+    "meta.languages": "languages",
+    "meta.modules": "modules",
+    "meta.symbols": "symbols",
+    "meta.path": "path",
+    "meta.lines": "lines",
+    "meta.neighborhood": "neighborhood",
+    "meta.importDegree": "import degree",
+    "meta.hub": "hub",
+    "meta.kind": "kind",
+    "meta.line": "line",
+    "meta.exported": "exported",
+    "meta.references": "references",
+
+    "value.noneSupported": "none supported",
+    "value.na": "n/a",
+    "value.yes": "yes",
+    "value.no": "no",
+    "value.hubYes": "yes, changes ripple widest here",
+    "value.noRefs": "none found in this repo",
+
+    "legend.tree.hint": "The whole system as one tree. Tap a repo or directory to fold or unfold it; the → beside it opens its map, scoped to that spot. Tap a file to see its symbols.",
+    "legend.crossRepo": "Cross-repo edges arrive in v0.3.",
+    "legend.calls": "Gold lines are calls: who actually invokes whom.",
+    "legend.dashed": "┄ dashed: no references found in this repo",
+    "legend.hub": "◎ red outer ring: hub, changes ripple widest here",
+    "legend.neighborhoods": "Shaded areas are neighborhoods: files that import each other more than the rest.",
+    "legend.tap": "Tap a node to open it. Double-tap the canvas to back out."
+  }
+}

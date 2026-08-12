@@ -1,0 +1,89 @@
+{
+  "locale": "pt-BR",
+  "name": "Português (Brasil)",
+  "reviewed": false,
+  "maintainer": null,
+  "source": "en",
+  "strings": {
+    "doc.title": "Mapa do sistema do gitatlas",
+
+    "a11y.map": "Mapa ampliável do seu sistema",
+    "a11y.palette.open": "Abrir a paleta de salto",
+    "a11y.theme": "Tema",
+    "a11y.locale": "Idioma",
+    "a11y.parent": "Subir um nível",
+    "a11y.search": "Filtrar os nós deste nível",
+    "a11y.palette.dialog": "Saltar para qualquer coisa",
+    "a11y.palette.input": "Buscar em tudo",
+    "a11y.detail.close": "Fechar o painel de detalhes",
+    "a11y.scale": "Profundidade do zoom",
+    "a11y.scale.goto": "Ir para o nível {level}",
+
+    "theme.dark": "TUBO",
+    "theme.light": "VIDRO",
+
+    "plate.groupname": { "one": "{group} · {n} repo", "other": "{group} · {n} repos" },
+    "search.placeholder": "Filtrar este nível",
+    "palette.placeholder": "Salte para um repo, arquivo ou símbolo",
+
+    "empty.title": "Nada indexado neste repo ainda.",
+    "empty.body": "O gitatlas lê 21 linguagens hoje. As demais mostram uma visão vazia até o extrator delas chegar.",
+
+    "stop.tree": "ÁRVORE",
+    "stop.group": "GRUPO",
+    "stop.module": "MÓDULO",
+    "stop.symbol": "SÍMBOLO",
+
+    "parent.tree": "VOLTAR À ÁRVORE",
+    "parent.group": "VOLTAR AO GRUPO",
+    "parent.modules": "VOLTAR AOS MÓDULOS",
+
+    "badge.sym": "{n} sím",
+    "badge.files": { "one": "{n} arquivo", "other": "{n} arquivos" },
+
+    "tree.open.repo": "Abrir o mapa de módulos de {name}",
+    "tree.open.dir": "Abrir o mapa de módulos restrito a {dir}",
+
+    "neighborhood.fallback": "vizinhança {n}",
+
+    "kind.repo": "repo",
+    "kind.module": "módulo",
+    "kind.directory": "diretório",
+    "kind.file": "arquivo",
+    "kind.function": "função",
+    "kind.class": "classe",
+    "kind.method": "método",
+    "kind.interface": "interface",
+    "kind.type": "tipo",
+    "kind.enum": "enum",
+    "kind.variable": "variável",
+
+    "meta.languages": "linguagens",
+    "meta.modules": "módulos",
+    "meta.symbols": "símbolos",
+    "meta.path": "caminho",
+    "meta.lines": "linhas",
+    "meta.neighborhood": "vizinhança",
+    "meta.importDegree": "grau de importação",
+    "meta.hub": "hub",
+    "meta.kind": "tipo",
+    "meta.line": "linha",
+    "meta.exported": "exportado",
+    "meta.references": "referências",
+
+    "value.noneSupported": "nenhuma suportada",
+    "value.na": "n/d",
+    "value.yes": "sim",
+    "value.no": "não",
+    "value.hubYes": "sim, as mudanças se espalham mais a partir daqui",
+    "value.noRefs": "nenhuma encontrada neste repo",
+
+    "legend.tree.hint": "Todo o sistema como uma única árvore. Toque num repo ou diretório para dobrar ou desdobrar; a → ao lado abre o mapa dele, restrito àquele ponto. Toque num arquivo para ver os símbolos.",
+    "legend.crossRepo": "As arestas entre repos chegam na v0.3.",
+    "legend.calls": "As linhas douradas são chamadas: quem de fato invoca quem.",
+    "legend.dashed": "┄ tracejado: nenhuma referência encontrada neste repo",
+    "legend.hub": "◎ anel externo vermelho: hub, as mudanças se espalham mais a partir daqui",
+    "legend.neighborhoods": "As áreas sombreadas são vizinhanças: arquivos que se importam entre si mais do que o restante.",
+    "legend.tap": "Toque num nó para abri-lo. Toque duas vezes na tela para voltar."
+  }
+}

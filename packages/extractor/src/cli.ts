@@ -35,9 +35,50 @@ import { computeLayout } from "./layout.js";
 import { resolveTarget, TargetError } from "./clone.js";
 
 const USAGE = [
-  "Usage: gitatlas extract <group-folder|github-repo> [--out <dir>] [--ref <branch|tag|commit>] [--depth N] [--max-scan N] [--submodules split|absorb|skip] [--ignore <glob>]... [--if-stale] [--cache-dir <dir>]",
+  "Usage: gitatlas extract <group-folder|github-repo> [--out <dir>] [--ref <branch|tag|commit>] [--lang <code>] [--depth N] [--max-scan N] [--submodules split|absorb|skip] [--ignore <glob>]... [--if-stale] [--cache-dir <dir>]",
   "       gitatlas check   <group-folder|github-repo> [same flags] [--json]",
 ].join("\n");
+
+// ── viewer UI catalogs ──
+// Every catalog is baked into the generated file so one HTML can be opened by
+// a mixed-language team; --lang only picks which one it opens in. Four extra
+// catalogs cost about 4 KB, which is well under the d3 bundle already in there.
+const LOCALES_DIR = path.join(__dirname, "..", "..", "viewer", "locales");
+
+interface LocaleCatalog {
+  locale: string;
+  name: string;
+  reviewed: boolean;
+  maintainer: string | null;
+  strings: Record<string, string | Record<string, string>>;
+}
+
+function availableLocales(): string[] {
+  if (!fs.existsSync(LOCALES_DIR)) return ["en"];
+  return fs.readdirSync(LOCALES_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => f.slice(0, -".json".length))
+    .sort();
+}
+
+/**
+ * en.json is a shipped asset, not user input: if it is missing the viewer has
+ * no fallback for any key, so fail loudly rather than emit a map full of
+ * untranslated key names.
+ */
+function loadLocales(): Record<string, LocaleCatalog> {
+  const catalogs: Record<string, LocaleCatalog> = {};
+  for (const code of availableLocales()) {
+    const file = path.join(LOCALES_DIR, `${code}.json`);
+    if (!fs.existsSync(file)) continue;
+    catalogs[code] = JSON.parse(fs.readFileSync(file, "utf8")) as LocaleCatalog;
+  }
+  if (!catalogs.en) {
+    console.error(`build error: no viewer locale catalog at ${path.join(LOCALES_DIR, "en.json")}`);
+    process.exit(1);
+  }
+  return catalogs;
+}
 
 async function main() {
   const args = process.argv.slice(2);
@@ -63,6 +104,14 @@ async function main() {
   }
   const outIdx = args.indexOf("--out");
   const outDir = path.resolve(outIdx > -1 ? args[outIdx + 1] : path.join(groupDir, ".gitatlas"));
+
+  // ── viewer language: which catalog the generated file opens in ──
+  const langIdx = args.indexOf("--lang");
+  const lang = langIdx > -1 ? args[langIdx + 1] : undefined;
+  if (langIdx > -1 && !availableLocales().includes(lang as string)) {
+    console.error(`unknown --lang ${lang ?? ""}: available locales are ${availableLocales().join(", ")}`);
+    process.exit(1);
+  }
 
   // ── user-supplied ignore globs (repeatable), additive to the built-in skips ──
   const ignoreGlobs: RegExp[] = [];
@@ -252,6 +301,7 @@ async function main() {
   // ── viewer generation: one self-contained HTML file ──
   const templatePath = path.join(__dirname, "..", "..", "viewer", "template.html");
   if (fs.existsSync(templatePath)) {
+    const locales = loadLocales();
     const graphsData = manifest.repos.map((r) =>
       JSON.parse(fs.readFileSync(path.join(outDir, r.graphFile), "utf8")));
     // vendor d3 into the file: the map now opens with zero network requests
@@ -265,7 +315,9 @@ async function main() {
     if (!d3src) console.warn("warning: d3 not found on disk; keeping CDN script tag");
     const html = fs.readFileSync(templatePath, "utf8")
       .replace(/<script src="https:[^"]*d3[^"]*"><\/script>/, () => d3src ? "<script>" + d3src + "</scr" + "ipt>" : "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js\"></scr" + "ipt>")
-      .replace("/*__DATA__*/null", () => JSON.stringify({ manifest, graphs: graphsData }));
+      .replace("/*__DATA__*/null", () => JSON.stringify({ manifest, graphs: graphsData }))
+      .replace("/*__LOCALES__*/null", () => JSON.stringify(locales))
+      .replace("/*__LANG__*/null", () => JSON.stringify(lang ?? null));
     fs.writeFileSync(path.join(outDir, "index.html"), html);
     console.log(`viewer -> ${path.join(outDir, "index.html")} (open it in any browser)`);
   } else {

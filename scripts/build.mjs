@@ -22,6 +22,11 @@ const templateDst = path.join(dist, "packages", "viewer", "template.html");
 fs.mkdirSync(path.dirname(templateDst), { recursive: true });
 fs.copyFileSync(path.join(root, "packages", "viewer", "template.html"), templateDst);
 
+// the UI catalogs the extractor bakes into every generated map
+const localesSrc = path.join(root, "packages", "viewer", "locales");
+const localesDst = path.join(dist, "packages", "viewer", "locales");
+fs.cpSync(localesSrc, localesDst, { recursive: true });
+
 // A missing file here degrades silently at runtime (the extractor only warns
 // when the template is absent), so fail the build loudly instead.
 const mustExist = [
@@ -31,6 +36,7 @@ const mustExist = [
   "packages/scoper/src/cli.js",
   "packages/site/src/start.js",
   "packages/viewer/template.html",
+  "packages/viewer/locales/en.json",
 ];
 const missing = mustExist.filter((rel) => !fs.existsSync(path.join(dist, rel)));
 if (missing.length > 0) {

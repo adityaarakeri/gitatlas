@@ -1,0 +1,89 @@
+{
+  "locale": "es",
+  "name": "Español",
+  "reviewed": false,
+  "maintainer": null,
+  "source": "en",
+  "strings": {
+    "doc.title": "Mapa del sistema de gitatlas",
+
+    "a11y.map": "Mapa ampliable de tu sistema",
+    "a11y.palette.open": "Abrir la paleta de salto",
+    "a11y.theme": "Tema",
+    "a11y.locale": "Idioma",
+    "a11y.parent": "Subir un nivel",
+    "a11y.search": "Filtrar los nodos de este nivel",
+    "a11y.palette.dialog": "Saltar a cualquier sitio",
+    "a11y.palette.input": "Buscar en todo",
+    "a11y.detail.close": "Cerrar el panel de detalle",
+    "a11y.scale": "Profundidad de zoom",
+    "a11y.scale.goto": "Ir al nivel {level}",
+
+    "theme.dark": "TUBO",
+    "theme.light": "VIDRIO",
+
+    "plate.groupname": { "one": "{group} · {n} repo", "other": "{group} · {n} repos" },
+    "search.placeholder": "Filtrar este nivel",
+    "palette.placeholder": "Salta a un repo, archivo o símbolo",
+
+    "empty.title": "Todavía no hay nada indexado en este repo.",
+    "empty.body": "gitatlas lee 21 lenguajes hoy. Los demás muestran una vista vacía hasta que llegue su extractor.",
+
+    "stop.tree": "ÁRBOL",
+    "stop.group": "GRUPO",
+    "stop.module": "MÓDULO",
+    "stop.symbol": "SÍMBOLO",
+
+    "parent.tree": "VOLVER AL ÁRBOL",
+    "parent.group": "VOLVER AL GRUPO",
+    "parent.modules": "VOLVER A MÓDULOS",
+
+    "badge.sym": "{n} sím",
+    "badge.files": { "one": "{n} archivo", "other": "{n} archivos" },
+
+    "tree.open.repo": "Abrir el mapa de módulos de {name}",
+    "tree.open.dir": "Abrir el mapa de módulos acotado a {dir}",
+
+    "neighborhood.fallback": "vecindario {n}",
+
+    "kind.repo": "repo",
+    "kind.module": "módulo",
+    "kind.directory": "directorio",
+    "kind.file": "archivo",
+    "kind.function": "función",
+    "kind.class": "clase",
+    "kind.method": "método",
+    "kind.interface": "interfaz",
+    "kind.type": "tipo",
+    "kind.enum": "enum",
+    "kind.variable": "variable",
+
+    "meta.languages": "lenguajes",
+    "meta.modules": "módulos",
+    "meta.symbols": "símbolos",
+    "meta.path": "ruta",
+    "meta.lines": "líneas",
+    "meta.neighborhood": "vecindario",
+    "meta.importDegree": "grado de importación",
+    "meta.hub": "concentrador",
+    "meta.kind": "tipo",
+    "meta.line": "línea",
+    "meta.exported": "exportado",
+    "meta.references": "referencias",
+
+    "value.noneSupported": "ninguno compatible",
+    "value.na": "n/d",
+    "value.yes": "sí",
+    "value.no": "no",
+    "value.hubYes": "sí, los cambios se propagan más desde aquí",
+    "value.noRefs": "ninguna encontrada en este repo",
+
+    "legend.tree.hint": "Todo el sistema como un solo árbol. Toca un repo o directorio para plegarlo o desplegarlo; la → de al lado abre su mapa, acotado a ese punto. Toca un archivo para ver sus símbolos.",
+    "legend.crossRepo": "Las aristas entre repos llegan en la v0.3.",
+    "legend.calls": "Las líneas doradas son llamadas: quién invoca realmente a quién.",
+    "legend.dashed": "┄ discontinua: sin referencias en este repo",
+    "legend.hub": "◎ anillo exterior rojo: concentrador, los cambios se propagan más desde aquí",
+    "legend.neighborhoods": "Las zonas sombreadas son vecindarios: archivos que se importan entre sí más que al resto.",
+    "legend.tap": "Toca un nodo para abrirlo. Toca dos veces el lienzo para retroceder."
+  }
+}
