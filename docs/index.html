@@ -449,16 +449,17 @@
       <div>
         <p class="eyebrow"><span class="idx">MIT</span> open source / local only / 21 languages</p>
         <h1>One map. Every repo. Down to the function<span class="red">.</span></h1>
-        <p class="sub">Point it at a folder of repositories. Get <strong>one interactive HTML file</strong> that zooms from your whole system, to a repo, to a module, to a single function. No server, no cloud, no account. Your code never leaves your machine.</p>
+        <p class="sub">Point it at a folder of repositories, or at a GitHub repo. Get <strong>one interactive HTML file</strong> that zooms from your whole system, to a repo, to a module, to a single function. No server, no cloud, no account. Your code never leaves your machine.</p>
 
         <div class="term plate">
           <div class="term-head">
             <span>shell</span>
-            <button class="copy-btn" data-copy="npm install -g gitatlas&#10;gitatlas extract /path/to/your/repos">Copy</button>
+            <button class="copy-btn" data-copy="npm install -g gitatlas&#10;gitatlas extract /path/to/your/repos&#10;gitatlas extract expressjs/express">Copy</button>
           </div>
           <div class="term-body">
             <span class="ln"><span class="ps">$ </span>npm install -g gitatlas</span>
             <span class="ln"><span class="ps">$ </span>gitatlas extract /path/to/your/repos</span>
+            <span class="ln"><span class="ps">$ </span>gitatlas extract expressjs/express <span class="cm"># or any GitHub repo</span></span>
             <span class="ln"><span class="cm"># open the index.html it prints.</span></span>
             <span class="ln"><span class="cm"># that is the whole install.</span></span>
           </div>
@@ -725,7 +726,7 @@
           <div class="num">2</div>
           <div class="body">
             <h3>Artifacts are files</h3>
-            <p>No daemon, no database, no required network. The map opens offline, on a plane, in a bunker. Only the webfonts phone home, and when they cannot, you get system faces and the exact same map.</p>
+            <p>No daemon, no database, no required network. The map opens offline, on a plane, in a bunker. Only the webfonts phone home, and when they cannot, you get system faces and the exact same map. Handing it a GitHub repo is the one time it dials out, and only because you asked it to.</p>
           </div>
         </div>
         <div class="rule">
@@ -755,8 +756,8 @@
       <div class="table-scroll reveal" style="margin-top:36px">
         <table class="cmds">
           <tbody>
-            <tr><td>gitatlas <span class="verb">extract</span> &lt;folder&gt;</td><td>Build the map</td></tr>
-            <tr><td>gitatlas <span class="verb">check</span> &lt;folder&gt;</td><td>Exit 0 fresh, 1 stale</td></tr>
+            <tr><td>gitatlas <span class="verb">extract</span> &lt;folder | github repo&gt;</td><td>Build the map</td></tr>
+            <tr><td>gitatlas <span class="verb">check</span> &lt;folder | github repo&gt;</td><td>Exit 0 fresh, 1 stale</td></tr>
             <tr><td>gitatlas <span class="verb">brief</span></td><td>Token-budgeted digest for agent context</td></tr>
             <tr><td>gitatlas <span class="verb">mcp</span></td><td>Serve the map to agents over MCP</td></tr>
             <tr><td>gitatlas <span class="verb">scope</span></td><td>Rank the neighborhood around a bug signal</td></tr>
@@ -764,6 +765,9 @@
           </tbody>
         </table>
       </div>
+
+      <p class="coverage-note reveal">A target is a folder or a GitHub repo, in whatever spelling you have on the clipboard: <code>owner/repo</code>, a browser URL, or a <code>git@github.com:owner/repo.git</code> address. The repo is shallow-cloned into <code>~/.gitatlas</code> and refreshed in place on later runs, so <code>check</code> and <code>--if-stale</code> stay meaningful against a moving upstream. A path that exists on disk always wins. The reading commands take the same target: <code>gitatlas brief --target owner/repo</code>.</p>
+      <p class="coverage-note reveal">Pin a branch, tag, or commit with <code>--ref v4.18.2</code>, or paste the <code>/tree/v4.18.2</code> URL you were already reading. Each ref gets its own clone and its own map, named for it, so a branch map is never mistaken for the default branch's.</p>
 
       <div class="langs reveal">
         <span class="lang ts">TypeScript</span><span class="lang ts">JavaScript</span>

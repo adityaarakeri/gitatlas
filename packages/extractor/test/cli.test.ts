@@ -62,6 +62,40 @@ test("CLI dispatches known commands and rejects missing or unknown commands", ()
   }
 });
 
+test("bad targets are reported without a stack trace or a network call", () => {
+  // Neither input can be read as a GitHub repo, so nothing here goes online.
+  const otherHost = runCli(["extract", "https://gitlab.com/foo/bar"]);
+  assert.equal(otherHost.status, 1);
+  assert.match(otherHost.stderr, /not a GitHub repo/);
+  assert.doesNotMatch(otherHost.stderr, /at Object|at main/);
+
+  const missing = runCli(["check", "no-such-folder-here"]);
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /no such folder/);
+});
+
+test("the read commands accept the target extract was given", () => {
+  const cache = fs.mkdtempSync(path.join(os.tmpdir(), "gitatlas-target-cache-"));
+  try {
+    // No map has been extracted, so each command must say so while naming the
+    // cached clone's map directory: proof the target resolved, without a clone.
+    const expected = /acme[\\/]widget[\\/]\.gitatlas/;
+    for (const argv of [
+      ["brief", "--target", "acme/widget", "--cache-dir", cache],
+      ["mcp", "--target", "https://github.com/acme/widget", "--cache-dir", cache],
+      ["scope", "--symbol", "charge", "--target", "acme/widget", "--cache-dir", cache],
+    ]) {
+      const result = runCli(argv, 30_000);
+      assert.equal(result.status, 1, result.stderr);
+      assert.match(result.stderr, /no graphs found at/);
+      assert.match(result.stderr, expected);
+    }
+    assert.deepEqual(fs.readdirSync(cache), [], "reading a map must not clone anything");
+  } finally {
+    fs.rmSync(cache, { recursive: true, force: true });
+  }
+});
+
 test("check and extract --if-stale track source changes end-to-end", { timeout: 300_000 }, () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "gitatlas-fresh-"));
   const out = path.join(root, "map");

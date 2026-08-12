@@ -1,7 +1,7 @@
 {
   "name": "gitatlas",
-  "version": "0.10.0",
-  "description": "Multi-repo architecture maps you can zoom into. C4-from-code, open source.",
+  "version": "0.11.0",
+  "description": "Turn a folder of repos or any GitHub repo into one interactive HTML architecture map, from system down to function. 21 languages, fully offline, with an MCP server for coding agents.",
   "license": "MIT",
   "author": "Aditya Arakeri",
   "type": "commonjs",
@@ -53,7 +53,9 @@
     "c4-model",
     "static-analysis",
     "knowledge-graph",
-    "developer-tools"
+    "developer-tools",
+    "mcp",
+    "github"
   ],
   "engines": {
     "node": ">=22"

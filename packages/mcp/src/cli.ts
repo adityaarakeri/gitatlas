@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * gitatlas mcp [--out <dir>] [--ignore <glob>]...
+ * gitatlas mcp [--out <dir>] [--target <folder|github-repo>] [--ref <branch|tag|commit>]
+ *              [--ignore <glob>]... [--cache-dir <dir>]
  *
  * MCP server over stdio: newline-delimited JSON-RPC 2.0, implementing
  * initialize / tools/list / tools/call. Hand-rolled on purpose, like the site
@@ -19,6 +20,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as readline from "node:readline";
 import { globToRegExp } from "../../extractor/src/extract.js";
+import { mapDirFromArgs, TargetError } from "../../extractor/src/clone.js";
 import { graphFreshness, GraphFreshness } from "../../extractor/src/freshness.js";
 import { RepoGraph, GroupManifest } from "../../schema/src/types.js";
 import { TOOLS, callTool } from "./server.js";
@@ -37,11 +39,17 @@ interface JsonRpcMessage {
 function main() {
   const args = process.argv.slice(2);
   if (args[0] !== "mcp") {
-    console.error("Usage: gitatlas mcp [--out <dir>] [--ignore <glob>]...");
+    console.error("Usage: gitatlas mcp [--out <dir>] [--target <folder|github-repo>] [--ref <branch|tag|commit>] [--ignore <glob>]... [--cache-dir <dir>]");
     process.exit(1);
   }
-  const outIdx = args.indexOf("--out");
-  const outDir = path.resolve(outIdx > -1 ? args[outIdx + 1] : path.join(process.cwd(), ".gitatlas"));
+  let outDir: string;
+  try {
+    outDir = mapDirFromArgs(args);
+  } catch (error) {
+    if (!(error instanceof TargetError)) throw error;
+    console.error(error.message);
+    process.exit(1);
+  }
   const ignore: RegExp[] = [];
   for (let k = 0; k < args.length - 1; k++) {
     if (args[k] === "--ignore") ignore.push(globToRegExp(args[k + 1]));

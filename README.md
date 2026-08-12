@@ -4,7 +4,7 @@
 
 **One map. Every repo. Down to the function.**
 
-Point it at a folder of repositories. Get one interactive HTML file that zooms from your whole system, to a repo, to a module, to a single function. No server, no cloud, no account. Your code never leaves your machine.
+Point it at a folder of repositories, or at a GitHub repo. Get one interactive HTML file that zooms from your whole system, to a repo, to a module, to a single function. No server, no cloud, no account. Your code never leaves your machine.
 
 [![CI](https://github.com/adityaarakeri/gitatlas/actions/workflows/ci.yml/badge.svg)](https://github.com/adityaarakeri/gitatlas/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -41,6 +41,37 @@ gitatlas extract /path/to/your/repos
 ```
 
 Open the `index.html` it prints at the end. That is the whole install. (About 60 MB on disk, dominated by the WASM grammars that cover 21 languages with zero native compilation.)
+
+### Or hand it a GitHub repo
+
+No clone of your own required. Paste whatever spelling you have:
+
+```bash
+gitatlas extract expressjs/express
+gitatlas extract https://github.com/expressjs/express
+gitatlas extract git@github.com:expressjs/express.git
+```
+
+Pin a branch, a tag, or a commit with `--ref`, or paste the URL you were already looking at:
+
+```bash
+gitatlas extract expressjs/express --ref v4.18.2
+gitatlas extract https://github.com/expressjs/express/tree/5.0    # the URL carries the ref
+```
+
+Each ref gets its own clone and its own map, named for it (`express@v4.18.2`), so mapping a branch never disturbs the map of the default branch, and the two can never be confused for each other. `--ref` wins over a ref in the URL, and says so when they disagree.
+
+The repo is shallow-cloned to `~/.gitatlas/repos/<owner>/<repo>` and the map lands in that clone, at the `index.html` path printed at the end. Later runs fetch into the same clone instead of downloading it again, which is what keeps `gitatlas check` and `--if-stale` meaningful against a moving upstream. Move the cache with `--cache-dir` or `GITATLAS_CACHE_DIR`, and use `--out` to put the map somewhere of your own.
+
+Every other command takes the same target, so you never have to paste the cache path:
+
+```bash
+gitatlas brief --target expressjs/express
+gitatlas scope --trace crash.txt --target expressjs/express
+gitatlas mcp --target expressjs/express --ref v4.18.2   # pass the ref you extracted
+```
+
+A path that exists on disk always wins, so `gitatlas extract owner/repo` reaches for GitHub only when there is no such folder, and says so when it does. Credential prompts stay off, so a private repo works when your git can already read it non-interactively. The clone is shallow and skips submodules; `docs/cli.md` says what to do when you want them.
 
 Working on gitatlas itself? The clone needs no build step:
 
@@ -85,6 +116,8 @@ gitatlas brief --budget 1500     # token-budgeted markdown digest for a system p
 claude mcp add gitatlas -- gitatlas mcp --out /path/to/repos/.gitatlas
 ```
 
+`brief`, `mcp`, and `scope` also take `--target <folder|github-repo>` (with `--ref` if you pinned one), the same thing you handed `extract`, and find the map it wrote.
+
 The MCP server exposes five tools over stdio: `brief`, `scope` (stack trace to ranked suspects), `find_symbol`, `module_info`, and `check_freshness`. It re-verifies source fingerprints before every answer, so an agent is never handed stale `file:line` data without a warning inside the result.
 
 A map that has drifted from the code is worse than no map. `gitatlas check` exits 1 when anything is stale, and `gitatlas extract --if-stale` is the one-liner for CI jobs and agent hooks.
@@ -94,7 +127,7 @@ Details in [docs/agents.md](docs/agents.md).
 ## Three rules it will not break
 
 1. **The schema is the contract.** Extractor and viewer never know about each other.
-2. **Artifacts are files.** No daemon, no database, no required network.
+2. **Artifacts are files.** No daemon, no database, no required network. Handing it a GitHub repo is the one time it dials out, and only because you asked it to.
 3. **Every edge carries confidence.** `exact`, `resolved`, or `inferred`. Guesses are drawn dashed and labeled. Nothing is upgraded to a fact.
 
 Nothing comes from a language model. When `helper()` could be three different symbols, gitatlas emits no edge rather than a wrong one. Same repos in, pixel-identical map out, every run.
@@ -103,7 +136,7 @@ Nothing comes from a language model. When `helper()` could be three different sy
 
 | | Scope | Who authors the model | Output |
 |---|---|---|---|
-| **gitatlas** | a folder of repos | the extractor | one local HTML file |
+| **gitatlas** | a folder of repos, or a GitHub repo | the extractor | one local HTML file |
 | GitNexus, CodeGraph | one repo per graph | the extractor | a graph for agents |
 | Structurizr | whatever you declare | you, by hand | rendered C4 diagrams |
 | Sourcegraph | org-wide | the indexer | a hosted search UI |
@@ -114,14 +147,14 @@ Hand-written models drift the day their author goes on holiday. This one regener
 
 | Command | What it does |
 | --- | --- |
-| `gitatlas extract <folder>` | Build the map |
-| `gitatlas check <folder>` | Exit 0 fresh, 1 stale |
+| `gitatlas extract <folder\|github-repo>` | Build the map |
+| `gitatlas check <folder\|github-repo>` | Exit 0 fresh, 1 stale |
 | `gitatlas brief` | Token-budgeted digest for agent context |
 | `gitatlas mcp` | Serve the map to agents over MCP |
 | `gitatlas scope` | Rank the neighborhood around a bug signal |
 | `gitatlas site` | Hosted playground for public GitHub repos |
 
-Full flags, repo discovery, submodule modes, and ignore globs: [docs/cli.md](docs/cli.md).
+Full flags, repo discovery, GitHub targets and refs, submodule modes, and ignore globs: [docs/cli.md](docs/cli.md).
 
 ## Honest limitations
 

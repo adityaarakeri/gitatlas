@@ -10,7 +10,12 @@ Two commands turn the map into agent context, and both re-check source fingerpri
 gitatlas brief                          # reads ./.gitatlas, ~4000 token budget
 gitatlas brief --budget 1500            # tighter digest, sections drop to fit
 gitatlas brief --repo checkout-api      # one repo only
+gitatlas brief --target expressjs/express   # the map for a GitHub repo you extracted
 ```
+
+`--target` takes whatever you gave `extract`, a folder or a GitHub repo, and reads the map that command wrote. Add `--ref <branch|tag|commit>` if you pinned one, since each ref has its own map. `--target` never clones or fetches: if no map is there yet, it says so and names the directory it looked in. `--out` still points at a map directory directly and wins when both are given. `brief`, `mcp`, and `scope` all take these flags.
+
+Pinning a ref is the reliable way to give an agent a map that cannot move under it: a tag fingerprints identically forever, so `check` stays fresh and the digest keeps matching the code the agent is reading.
 
 ## `mcp`: the map as a live tool
 
@@ -18,6 +23,7 @@ gitatlas brief --repo checkout-api      # one repo only
 
 ```bash
 claude mcp add gitatlas -- gitatlas mcp --out /path/to/repos/.gitatlas
+claude mcp add gitatlas -- gitatlas mcp --target expressjs/express   # a GitHub repo you extracted
 ```
 
 Five tools:
@@ -44,6 +50,6 @@ gitatlas check ~/work/repos --json            # machine-readable report for scri
 gitatlas extract ~/work/repos --if-stale      # re-extract only when something changed
 ```
 
-`check` re-walks the source with the same discovery rules and hashes file contents, no parsing, no writes. It reports each repo as `fresh`, `stale` (source changed), `new` (no graph yet), `removed` (graph exists, repo gone), or `unknown` (a pre-fingerprint graph). Anything but fresh exits 1.
+`check` re-walks the source with the same discovery rules and hashes file contents, no parsing, and no writes to the map. (Given a GitHub repo rather than a folder it does write one thing: the fetch that brings the cached clone up to date, which is the only way to know whether upstream moved.) It reports each repo as `fresh`, `stale` (source changed), `new` (no graph yet), `removed` (graph exists, repo gone), or `unknown` (a pre-fingerprint graph). Anything but fresh exits 1.
 
 `extract --if-stale` is the one-liner for CI jobs and agent hooks: run it unconditionally before reading the graphs and it either no-ops in a fraction of the extract time or rebuilds the map. Fingerprints are content-based, not mtime-based, so the same tree is fresh on any machine and any clone. Pass the same `--ignore` and `--submodules` flags you extract with, so the comparison walks the same file set.

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * gitatlas scope --trace <file> [--repo <name>] [--hops N] [--top K] [--json]
+ * gitatlas scope --trace <file> [--out <dir>] [--target <folder|github-repo>]
+ *                [--ref <branch|tag|commit>] [--repo <name>] [--hops N] [--top K]
+ *                [--json] [--cache-dir <dir>]
  * gitatlas scope --symbol <name> [...]
  *
  * Loads graphs produced by `extract` and returns the bounded structural
@@ -10,6 +12,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { mapDirFromArgs, TargetError } from "../../extractor/src/clone.js";
 import { scope, RepoGraph } from "./scope.js";
 
 function loadGraphs(outDir: string): RepoGraph[] {
@@ -31,10 +34,17 @@ function arg(args: string[], flag: string): string | undefined {
 function main() {
   const args = process.argv.slice(2);
   if (args[0] !== "scope") {
-    console.error("Usage: gitatlas scope --trace <file> | --symbol <name> [--out <dir>] [--repo <name>] [--hops N] [--top K] [--json]");
+    console.error("Usage: gitatlas scope --trace <file> | --symbol <name> [--out <dir>] [--target <folder|github-repo>] [--ref <branch|tag|commit>] [--repo <name>] [--hops N] [--top K] [--json] [--cache-dir <dir>]");
     process.exit(1);
   }
-  const outDir = path.resolve(arg(args, "--out") ?? path.join(process.cwd(), ".gitatlas"));
+  let outDir: string;
+  try {
+    outDir = mapDirFromArgs(args);
+  } catch (error) {
+    if (!(error instanceof TargetError)) throw error;
+    console.error(error.message);
+    process.exit(1);
+  }
   const tracePath = arg(args, "--trace");
   const symbol = arg(args, "--symbol");
   const repoFilter = arg(args, "--repo");

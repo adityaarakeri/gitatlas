@@ -4,46 +4,13 @@
  * Mirrors the scoper split (scope.ts pure, cli.ts I/O).
  */
 
-export interface RepoRef {
-  owner: string;
-  repo: string;
-}
+// Repo naming and input parsing are shared with the extractor CLI, which takes
+// the same GitHub targets. Re-exported so the rest of the site keeps importing
+// everything it needs from one module.
+import type { RepoRef } from "../../extractor/src/github.js";
 
-// GitHub owner: 1-39 chars, alphanumeric and hyphens, no leading/trailing hyphen.
-const OWNER_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
-// GitHub repo: alphanumeric, hyphen, underscore, dot (".github" is legal).
-// "." and ".." are rejected below; the charset already excludes path separators.
-const REPO_RE = /^[A-Za-z0-9._-]{1,100}$/;
-
-export function isValidOwner(owner: string): boolean {
-  return OWNER_RE.test(owner);
-}
-
-export function isValidRepo(repo: string): boolean {
-  return REPO_RE.test(repo) && repo !== "." && repo !== "..";
-}
-
-/**
- * Accepts what people actually paste: "owner/repo", "github.com/owner/repo",
- * "https://github.com/owner/repo", trailing ".git", trailing slash or deeper
- * paths ("/tree/main/..."). Returns null for anything that does not resolve
- * to a plausible GitHub repo.
- */
-export function parseRepoInput(input: string): RepoRef | null {
-  let s = input.trim();
-  if (!s) return null;
-  s = s.replace(/^git@github\.com:/i, "");
-  s = s.replace(/^[a-z]+:\/\//i, "");
-  s = s.replace(/^www\./i, "");
-  if (/^github\.com[/:]/i.test(s)) s = s.replace(/^github\.com[/:]/i, "");
-  else if (/^[a-z0-9.-]+\.[a-z]{2,}\//i.test(s)) return null; // some other host
-  const parts = s.split("/").filter(Boolean);
-  if (parts.length < 2) return null;
-  const owner = parts[0];
-  const repo = parts[1].replace(/\.git$/i, "");
-  if (!isValidOwner(owner) || !isValidRepo(repo)) return null;
-  return { owner, repo };
-}
+export type { RepoRef };
+export { isValidOwner, isValidRepo, parseRepoInput } from "../../extractor/src/github.js";
 
 /** Cache key: GitHub names are case-insensitive, so the slug is lowercased. */
 export function repoSlug(ref: RepoRef): string {

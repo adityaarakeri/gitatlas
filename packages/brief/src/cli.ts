@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * gitatlas brief [--out <dir>] [--repo <name>] [--budget <tokens>]
- *                [--ignore <glob>]...
+ * gitatlas brief [--out <dir>] [--target <folder|github-repo>] [--ref <branch|tag|commit>]
+ *                [--repo <name>] [--budget <tokens>] [--ignore <glob>]...
+ *                [--cache-dir <dir>]
  *
  * Emits a token-budgeted markdown digest of an extracted map to stdout,
  * shaped for injection into a coding agent's context. Before emitting it
@@ -14,6 +15,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { globToRegExp } from "../../extractor/src/extract.js";
+import { mapDirFromArgs, TargetError } from "../../extractor/src/clone.js";
 import { graphFreshness } from "../../extractor/src/freshness.js";
 import { RepoGraph, GroupManifest } from "../../schema/src/types.js";
 import { buildBrief } from "./brief.js";
@@ -38,10 +40,17 @@ function arg(args: string[], flag: string): string | undefined {
 function main() {
   const args = process.argv.slice(2);
   if (args[0] !== "brief") {
-    console.error("Usage: gitatlas brief [--out <dir>] [--repo <name>] [--budget <tokens>] [--ignore <glob>]...");
+    console.error("Usage: gitatlas brief [--out <dir>] [--target <folder|github-repo>] [--ref <branch|tag|commit>] [--repo <name>] [--budget <tokens>] [--ignore <glob>]... [--cache-dir <dir>]");
     process.exit(1);
   }
-  const outDir = path.resolve(arg(args, "--out") ?? path.join(process.cwd(), ".gitatlas"));
+  let outDir: string;
+  try {
+    outDir = mapDirFromArgs(args);
+  } catch (error) {
+    if (!(error instanceof TargetError)) throw error;
+    console.error(error.message);
+    process.exit(1);
+  }
   const repo = arg(args, "--repo");
   const budgetRaw = arg(args, "--budget");
   const budget = budgetRaw ? parseInt(budgetRaw, 10) : undefined;

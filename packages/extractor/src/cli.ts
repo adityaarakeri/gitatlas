@@ -1,8 +1,17 @@
 #!/usr/bin/env node
 /**
- * gitatlas extract <group-folder> [--out <dir>] [--depth N] [--max-scan N]
- *                  [--submodules split|absorb|skip] [--ignore <glob>]... [--if-stale]
- * gitatlas check   <group-folder> [same flags] [--json]
+ * gitatlas extract <group-folder|github-repo> [--out <dir>] [--ref <branch|tag|commit>]
+ *                  [--depth N] [--max-scan N] [--submodules split|absorb|skip]
+ *                  [--ignore <glob>]... [--if-stale] [--cache-dir <dir>]
+ * gitatlas check   <group-folder|github-repo> [same flags] [--json]
+ *
+ * The target is a folder, or a GitHub repo ("owner/repo", "github.com/owner/repo",
+ * a browser URL, an scp-style git@ address). A GitHub target is shallow-cloned
+ * into ~/.gitatlas/repos/<owner>/<repo> and refreshed on later runs; a path that
+ * exists on disk always wins, so nothing local turns into a network call.
+ *
+ * --ref pins a branch, tag, or commit, as does a /tree/<ref>/ URL. Each ref gets
+ * its own clone (<repo>@<ref>), which is also the name its map carries.
  *
  * Common build artifacts (node_modules, dist, build, *.egg-info, dot-dirs, ...)
  * and documentation trees (docs, doc) are skipped by default; --ignore adds
@@ -23,10 +32,11 @@ import * as path from "node:path";
 import { extractRepo, walk, fingerprintFiles, shouldSkipDir, globToRegExp, SCHEMA_VERSION, Edge } from "./extract.js";
 import { parseGitmodules } from "./freshness.js";
 import { computeLayout } from "./layout.js";
+import { resolveTarget, TargetError } from "./clone.js";
 
 const USAGE = [
-  "Usage: gitatlas extract <group-folder> [--out <dir>] [--depth N] [--max-scan N] [--submodules split|absorb|skip] [--ignore <glob>]... [--if-stale]",
-  "       gitatlas check   <group-folder> [same flags] [--json]",
+  "Usage: gitatlas extract <group-folder|github-repo> [--out <dir>] [--ref <branch|tag|commit>] [--depth N] [--max-scan N] [--submodules split|absorb|skip] [--ignore <glob>]... [--if-stale] [--cache-dir <dir>]",
+  "       gitatlas check   <group-folder|github-repo> [same flags] [--json]",
 ].join("\n");
 
 async function main() {
@@ -36,7 +46,21 @@ async function main() {
     console.error(USAGE);
     process.exit(1);
   }
-  const groupDir = path.resolve(args[1]);
+
+  // ── target: a folder to walk, or a GitHub repo to clone into the cache ──
+  const cacheIdx = args.indexOf("--cache-dir");
+  const refIdx = args.indexOf("--ref");
+  let groupDir: string;
+  try {
+    groupDir = resolveTarget(args[1], {
+      cacheRoot: cacheIdx > -1 ? path.resolve(args[cacheIdx + 1]) : undefined,
+      ref: refIdx > -1 ? args[refIdx + 1] : undefined,
+    });
+  } catch (error) {
+    if (!(error instanceof TargetError)) throw error;
+    console.error(error.message);
+    process.exit(1);
+  }
   const outIdx = args.indexOf("--out");
   const outDir = path.resolve(outIdx > -1 ? args[outIdx + 1] : path.join(groupDir, ".gitatlas"));
 
