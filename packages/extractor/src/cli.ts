@@ -198,7 +198,10 @@ async function main() {
   // Statuses: fresh (fingerprint matches), stale (source changed), new (repo
   // has no graph yet), removed (graph exists, repo gone from disk), unknown
   // (pre-fingerprint graph). Anything but fresh means re-extract.
-  type Freshness = { name: string; status: "fresh" | "stale" | "new" | "removed" | "unknown" };
+  type Freshness = {
+    name: string; status: "fresh" | "stale" | "new" | "removed" | "unknown";
+    commit?: string; refName?: string; dirty?: boolean;
+  };
   function checkFreshness(): Freshness[] {
     const manifestPath = path.join(outDir, "group.json");
     if (!fs.existsSync(manifestPath)) {
@@ -216,13 +219,21 @@ async function main() {
         statuses.push({ name, status: "new" });
         continue;
       }
-      const graph = JSON.parse(fs.readFileSync(graphPath, "utf8")) as { sourceFingerprint?: string };
+      const graph = JSON.parse(fs.readFileSync(graphPath, "utf8")) as {
+        sourceFingerprint?: string; commit?: string; refName?: string; dirty?: boolean;
+      };
+      // the map's recorded commit, not a live re-read of the working tree: check
+      // never mutates or runs git, only compares content fingerprints.
+      const recorded = { commit: graph.commit, refName: graph.refName, dirty: graph.dirty };
       if (!graph.sourceFingerprint) {
-        statuses.push({ name, status: "unknown" });
+        statuses.push({ name, status: "unknown", ...recorded });
         continue;
       }
       const files = walk(dir, [], excludes.get(dir), ignoreGlobs.length ? { root: dir, globs: ignoreGlobs } : undefined);
-      statuses.push({ name, status: graph.sourceFingerprint === fingerprintFiles(dir, files) ? "fresh" : "stale" });
+      statuses.push({
+        name, status: graph.sourceFingerprint === fingerprintFiles(dir, files) ? "fresh" : "stale",
+        ...recorded,
+      });
     }
     const discovered = new Set(repos.map((r) => r.name));
     for (const r of manifest.repos) {
@@ -240,7 +251,10 @@ async function main() {
       console.log("no repos discovered and no map found; nothing to compare");
     } else {
       const pad = Math.max(...statuses.map((s) => s.name.length));
-      for (const s of statuses) console.log(`  ${s.name.padEnd(pad)}  ${s.status}`);
+      for (const s of statuses) {
+        const commitNote = s.commit ? `  (map: ${s.commit.slice(0, 12)}${s.dirty ? " dirty" : ""})` : "";
+        console.log(`  ${s.name.padEnd(pad)}  ${s.status}${commitNote}`);
+      }
       console.log(fresh
         ? `map is fresh (${statuses.length} repo${statuses.length === 1 ? "" : "s"})`
         : "map is stale; run: gitatlas extract " + args[1]);
@@ -268,12 +282,21 @@ async function main() {
     schemaVersion: SCHEMA_VERSION,
     group: path.basename(groupDir),
     generatedAt: new Date().toISOString(),
-    repos: [] as { name: string; graphFile: string; moduleCount: number; symbolCount: number; languages: string[] }[],
+    repos: [] as {
+      name: string; graphFile: string; moduleCount: number; symbolCount: number; languages: string[];
+      commit?: string; refName?: string; dirty?: boolean;
+    }[],
     edges: [] as Edge[],
   };
 
+  // An explicit --ref names the branch, tag, or commit that was requested for
+  // the whole target; it only applies to that one repo (--ref is rejected
+  // outright for local, multi-repo targets in resolveTarget).
+  const requestedRef = refIdx > -1 ? args[refIdx + 1] : undefined;
+
   for (const { name, dir } of repos) {
     const graph = await extractRepo(dir, name, excludes.get(dir), ignoreGlobs);
+    if (requestedRef && dir === groupDir) graph.refName = requestedRef;
     const graphFile = `${name.replace(/\//g, "__")}.graph.json`;
     fs.writeFileSync(path.join(outDir, graphFile), JSON.stringify(graph, null, 2));
     manifest.repos.push({
@@ -281,8 +304,12 @@ async function main() {
       moduleCount: graph.modules.length,
       symbolCount: graph.symbols.length,
       languages: graph.language,
+      commit: graph.commit,
+      refName: graph.refName,
+      dirty: graph.dirty,
     });
-    console.log(`indexed ${name} [${graph.language.join(", ") || "no supported files"}]: ${graph.modules.length} modules, ${graph.symbols.length} symbols, ${graph.edges.length} edges`);
+    const commitSuffix = graph.commit ? ` at ${graph.commit.slice(0, 12)}${graph.dirty ? " (dirty)" : ""}` : "";
+    console.log(`indexed ${name}${commitSuffix} [${graph.language.join(", ") || "no supported files"}]: ${graph.modules.length} modules, ${graph.symbols.length} symbols, ${graph.edges.length} edges`);
   }
 
   // L0 layout: repo nodes, deterministic

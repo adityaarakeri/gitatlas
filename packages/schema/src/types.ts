@@ -89,6 +89,17 @@ export interface RepoGraph {
    * which `check` reports as unknown and treats as stale.
    */
   sourceFingerprint?: string;
+  /**
+   * full git commit sha the repo was at when this graph was extracted.
+   * Absent when the repo has no git history (or history could not be read).
+   * Distinct from `sourceFingerprint`: this identifies the commit, not
+   * whether the working tree matched it exactly (see `dirty`).
+   */
+  commit?: string;
+  /** branch or tag name for `commit`, if one was known at extract time (for example from `--ref`) */
+  refName?: string;
+  /** true if the working tree had uncommitted changes relative to `commit` at extract time */
+  dirty?: boolean;
   modules: ModuleNode[];
   symbols: SymbolNode[];
   edges: Edge[];
@@ -106,6 +117,10 @@ export interface GroupManifest {
     moduleCount: number;
     symbolCount: number;
     languages?: string[];
+    /** same provenance as `RepoGraph.commit` / `refName` / `dirty`, copied from the repo's graph */
+    commit?: string;
+    refName?: string;
+    dirty?: boolean;
     /** layout coordinates for the group view, baked in at extract time */
     x?: number;
     y?: number;

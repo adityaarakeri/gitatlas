@@ -70,6 +70,7 @@
     "meta.line": "línea",
     "meta.exported": "exportado",
     "meta.references": "referencias",
+    "meta.commit": "commit",
 
     "value.noneSupported": "ninguno compatible",
     "value.na": "n/d",
@@ -77,6 +78,7 @@
     "value.no": "no",
     "value.hubYes": "sí, los cambios se propagan más desde aquí",
     "value.noRefs": "ninguna encontrada en este repo",
+    "value.commitDirty": "{sha} (cambios sin confirmar)",
 
     "legend.tree.hint": "Todo el sistema como un solo árbol. Toca un repo o directorio para plegarlo o desplegarlo; la → de al lado abre su mapa, acotado a ese punto. Toca un archivo para ver sus símbolos.",
     "legend.crossRepo": "Las aristas entre repos llegan en la v0.3.",

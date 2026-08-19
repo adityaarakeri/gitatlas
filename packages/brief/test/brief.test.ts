@@ -82,3 +82,14 @@ test("brief: stale repos are flagged inside the text, scoped to the selection", 
   const filtered = buildBrief("lab", graphs, { repo: "alpha", staleRepos: ["beta"] });
   assert.doesNotMatch(filtered.text, /WARNING/, "a stale repo outside the selection is not flagged");
 });
+
+test("brief: repo header shows the commit, and a dirty note when the tree had uncommitted changes", () => {
+  const clean = { ...makeGraph("alpha"), commit: "af9ccca9d2e1beef00000000000000000000000", refName: "main" };
+  const dirty = { ...makeGraph("beta"), commit: "1234567890abcdef1234567890abcdef12345678", dirty: true };
+  const noCommit = makeGraph("gamma");
+
+  const brief = buildBrief("lab", [clean, dirty, noCommit]);
+  assert.match(brief.text, /## alpha @ af9ccca9d2e1 \(typescript\)/);
+  assert.match(brief.text, /## beta @ 1234567890ab \(dirty\) \(typescript\)/);
+  assert.match(brief.text, /## gamma \(typescript\)/, "a graph with no commit gets no @ note");
+});

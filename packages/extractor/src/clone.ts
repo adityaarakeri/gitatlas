@@ -92,6 +92,31 @@ function step(git: GitRunner, args: string[], captureStdout: boolean, failure: s
   return result;
 }
 
+export interface GitInfo {
+  commit: string;
+  dirty: boolean;
+  /** current branch name, absent on a detached HEAD (a fresh clone, or no branch checked out) */
+  refName?: string;
+}
+
+/**
+ * Commit provenance for a directory, read directly rather than raised as an
+ * error: a plain folder, a `.git` marker with no real repository behind it (as
+ * repo discovery treats any directory with a `.git` entry as a repo), or a repo
+ * with no commits yet are all just "no info", not failures.
+ */
+export function readGitInfo(dir: string, git: GitRunner = runGit): GitInfo | undefined {
+  if (!fs.existsSync(path.join(dir, ".git"))) return undefined;
+  const head = git(["-C", dir, "rev-parse", "HEAD"], true);
+  const commit = head.code === 0 ? head.stdout.trim() : "";
+  if (!commit) return undefined;
+  const status = git(["-C", dir, "status", "--porcelain"], true);
+  const dirty = status.code === 0 && status.stdout.trim().length > 0;
+  const branch = git(["-C", dir, "rev-parse", "--abbrev-ref", "HEAD"], true);
+  const branchName = branch.code === 0 ? branch.stdout.trim() : "";
+  return { commit, dirty, refName: branchName && branchName !== "HEAD" ? branchName : undefined };
+}
+
 /**
  * Clone `target` into the cache, or refresh it if it is already there, and
  * return the checked-out directory. Without a ref this tracks the default

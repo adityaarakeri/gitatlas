@@ -30,10 +30,14 @@ export interface GraphFreshness {
    * (map generated on another machine). unknown means "cannot verify",
    * never "verified". */
   status: "fresh" | "stale" | "unknown";
+  /** the map's recorded commit, not a live re-read of the working tree */
+  commit?: string;
+  refName?: string;
+  dirty?: boolean;
 }
 
 export function graphFreshness(
-  graphs: { repo: string; root: string; sourceFingerprint?: string }[],
+  graphs: { repo: string; root: string; sourceFingerprint?: string; commit?: string; refName?: string; dirty?: boolean }[],
   opts: { ignore?: RegExp[]; excludeSubmodules?: boolean } = {},
 ): GraphFreshness[] {
   // submodule paths are excluded by default, matching split/skip extraction
@@ -41,8 +45,9 @@ export function graphFreshness(
   // root); pass excludeSubmodules: false for absorb-mode maps
   const excludeSubs = opts.excludeSubmodules ?? true;
   return graphs.map((g) => {
+    const recorded = { commit: g.commit, refName: g.refName, dirty: g.dirty };
     if (!g.sourceFingerprint || !fs.existsSync(g.root)) {
-      return { repo: g.repo, status: "unknown" as const };
+      return { repo: g.repo, status: "unknown" as const, ...recorded };
     }
     const exclude = excludeSubs
       ? new Set(parseGitmodules(g.root).map((p) => path.resolve(g.root, p)))
@@ -50,6 +55,6 @@ export function graphFreshness(
     const files = walk(g.root, [], exclude,
       opts.ignore?.length ? { root: g.root, globs: opts.ignore } : undefined);
     const status = fingerprintFiles(g.root, files) === g.sourceFingerprint ? "fresh" : "stale";
-    return { repo: g.repo, status: status as "fresh" | "stale" };
+    return { repo: g.repo, status: status as "fresh" | "stale", ...recorded };
   });
 }

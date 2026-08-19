@@ -70,6 +70,7 @@
     "meta.line": "line",
     "meta.exported": "exported",
     "meta.references": "references",
+    "meta.commit": "commit",
 
     "value.noneSupported": "none supported",
     "value.na": "n/a",
@@ -77,6 +78,7 @@
     "value.no": "no",
     "value.hubYes": "yes, changes ripple widest here",
     "value.noRefs": "none found in this repo",
+    "value.commitDirty": "{sha} (uncommitted changes)",
 
     "legend.tree.hint": "The whole system as one tree. Tap a repo or directory to fold or unfold it; the → beside it opens its map, scoped to that spot. Tap a file to see its symbols.",
     "legend.crossRepo": "Cross-repo edges arrive in v0.3.",

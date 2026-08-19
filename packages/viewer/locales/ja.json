@@ -70,6 +70,7 @@
     "meta.line": "行",
     "meta.exported": "エクスポート",
     "meta.references": "参照数",
+    "meta.commit": "コミット",
 
     "value.noneSupported": "対応言語なし",
     "value.na": "該当なし",
@@ -77,6 +78,7 @@
     "value.no": "いいえ",
     "value.hubYes": "はい。変更の影響がここから最も広がります",
     "value.noRefs": "このリポジトリ内には見つかりません",
+    "value.commitDirty": "{sha}（未コミットの変更あり）",
 
     "legend.tree.hint": "システム全体を一本のツリーとして表示しています。リポジトリやディレクトリをタップすると開閉します。横の → はその位置に絞ったマップを開きます。ファイルをタップするとシンボルが見られます。",
     "legend.crossRepo": "リポジトリ間のエッジは v0.3 で入ります。",

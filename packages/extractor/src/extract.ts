@@ -10,6 +10,7 @@
 import * as ts from "typescript";
 import { detectNeighborhoods, labelNeighborhoods, findHubs } from "../../analysis/src/analyze.js";
 import { computeLayout, neighborhoodAnchors } from "./layout.js";
+import { readGitInfo } from "./clone.js";
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -92,6 +93,12 @@ export interface RepoGraph {
   neighborhoodLabels?: Record<string, string>;
   /** content hash of every file that entered this graph; see fingerprintFiles */
   sourceFingerprint?: string;
+  /** git commit sha the repo was at when this graph was extracted; see readGitInfo */
+  commit?: string;
+  /** branch or tag name for `commit`, if one was known at extract time */
+  refName?: string;
+  /** true if the working tree had uncommitted changes relative to `commit` at extract time */
+  dirty?: boolean;
 }
 
 const TS_EXTS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
@@ -1169,6 +1176,8 @@ export async function extractRepo(repoRoot: string, repoName: string, exclude?: 
     }
   }
 
+  const gitInfo = readGitInfo(repoRoot);
+
   return {
     schemaVersion: SCHEMA_VERSION,
     repo: repoName,
@@ -1176,6 +1185,9 @@ export async function extractRepo(repoRoot: string, repoName: string, exclude?: 
     language: languages,
     generatedAt: new Date().toISOString(),
     sourceFingerprint: fingerprintFiles(repoRoot, all),
+    commit: gitInfo?.commit,
+    refName: gitInfo?.refName,
+    dirty: gitInfo?.dirty,
     ...merged,
     neighborhoodLabels: Object.fromEntries(labels),
   };

@@ -70,6 +70,7 @@
     "meta.line": "行号",
     "meta.exported": "已导出",
     "meta.references": "引用数",
+    "meta.commit": "提交",
 
     "value.noneSupported": "无受支持的语言",
     "value.na": "不适用",
@@ -77,6 +78,7 @@
     "value.no": "否",
     "value.hubYes": "是，改动在此扩散最广",
     "value.noRefs": "在此仓库中未找到",
+    "value.commitDirty": "{sha}（有未提交的更改）",
 
     "legend.tree.hint": "整个系统就是一棵树。点按仓库或目录可折叠或展开；旁边的 → 会打开限定在该位置的地图。点按文件可查看其中的符号。",
     "legend.crossRepo": "跨仓库连线将在 v0.3 中加入。",

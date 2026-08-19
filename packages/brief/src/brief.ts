@@ -53,7 +53,8 @@ function repoSection(g: RepoGraph, level: number): string {
   const lines: string[] = [];
   const langs = g.language.length ? g.language.join(", ") : "no supported files";
   const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
-  lines.push(`## ${g.repo} (${langs}): ${count(g.modules.length, "module")}, ${count(g.symbols.length, "symbol")}`);
+  const commitNote = g.commit ? ` @ ${g.commit.slice(0, 12)}${g.dirty ? " (dirty)" : ""}` : "";
+  lines.push(`## ${g.repo}${commitNote} (${langs}): ${count(g.modules.length, "module")}, ${count(g.symbols.length, "symbol")}`);
 
   if (level >= 2) {
     const hubs = g.modules.filter((m) => m.hub)

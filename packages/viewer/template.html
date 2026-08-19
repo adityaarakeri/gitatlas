@@ -530,6 +530,12 @@ window.GITATLAS_LANG = /*__LANG__*/null;
   document.getElementById("parent").addEventListener("click", ascend);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeDetail(); ascend(); } });
 
+  // short sha for display, full sha on hover; older graphs carry no commit at all
+  function commitMeta(r) {
+    const short = r.commit.slice(0, 12);
+    return { value: r.dirty ? t("value.commitDirty", { sha: short }) : short, title: r.commit };
+  }
+
   function nodesAndLinks() {
     const f = filter.toLowerCase();
     if (path.length === 0) {
@@ -542,6 +548,7 @@ window.GITATLAS_LANG = /*__LANG__*/null;
             [t("meta.languages")]: (r.languages && r.languages.length ? r.languages.join(', ') : t("value.noneSupported")),
             [t("meta.modules")]: r.moduleCount,
             [t("meta.symbols")]: r.symbolCount,
+            ...(r.commit ? { [t("meta.commit")]: commitMeta(r) } : {}),
           },
         }));
       const ids = new Set(nodes.map((n) => n.id));
@@ -851,6 +858,14 @@ window.GITATLAS_LANG = /*__LANG__*/null;
       .attr("font-size", (d) => (d.kind === "repo" ? 13 : 11))
       .text((d) => d.label);
 
+    // repo and module nodes always descend into their children on click (see
+    // activate() below), so their meta (including commit provenance) has no
+    // other click target; a native hover tooltip is the only way to see it
+    node.filter((d) => d.kind === "repo" || d.kind === "module")
+      .append("title")
+      .text((d) => Object.entries(d.meta || {})
+        .map(([k, v]) => `${k}: ${v && typeof v === "object" ? v.value : v}`).join("\n"));
+
     const activate = (e, d) => {
       e.stopPropagation();
       if (d.kind === "repo" || d.kind === "module") descend(d);
@@ -964,7 +979,14 @@ window.GITATLAS_LANG = /*__LANG__*/null;
     document.getElementById("d-kind").textContent = kindLabel(d.kind);
     document.getElementById("d-title").textContent = d.full || d.label;
     document.getElementById("d-meta").innerHTML = Object.entries(d.meta || {})
-      .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+      .map(([k, v]) => {
+        // most meta values are plain; a {value, title} shape adds a full-text
+        // hover tooltip without changing the plain-value shape everywhere else
+        const rich = v && typeof v === "object";
+        const val = rich ? v.value : v;
+        const titleAttr = rich && v.title ? ` title="${esc(v.title)}"` : "";
+        return `<dt>${esc(k)}</dt><dd${titleAttr}>${esc(val)}</dd>`;
+      }).join("");
     document.getElementById("detail").classList.add("open");
   }
   function closeDetail() { document.getElementById("detail").classList.remove("open"); }

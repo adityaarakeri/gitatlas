@@ -100,6 +100,8 @@ Four zoom levels, and the camera flies between them.
 
 **Hubs are where change ripples widest.** A red ring marks the modules far above typical connection count. First place to look before a refactor, last place to edit casually on a Friday.
 
+**Every repo knows its own commit.** Tap a repo at the group level and its detail panel shows the sha it was mapped at (full sha on hover), flagged if the working tree had uncommitted changes at extract time. `brief`, `mcp`, and `gitatlas check --json` carry the same commit, refName, and dirty state.
+
 **Press ⌘K and go anywhere.** Type a few letters of any repo, file, class, or function across the entire group, and the camera flies to it. Hovering any node dims everything except its direct connections, so you can trace one module's wiring through a dense map without losing your place.
 
 <img alt="Command palette searching for render, returning results from both the click and flask repositories" src="docs/palette.jpg">

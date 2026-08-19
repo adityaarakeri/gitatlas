@@ -334,6 +334,38 @@
     .card:last-child { border-bottom: 0; }
   }
 
+  /* ---------- demos ---------- */
+  .demos {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--etch-faint); border-left: 1px solid var(--etch-faint);
+    background: var(--plate); margin-top: 36px;
+  }
+  .demo {
+    padding: 24px 22px 24px; display: flex; flex-direction: column;
+    border-right: 1px solid var(--etch-faint); border-bottom: 1px solid var(--etch-faint);
+  }
+  .demo .demo-lang {
+    font-family: var(--disp); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.16em; text-transform: uppercase; color: var(--index);
+  }
+  .demo h3 { font-family: var(--disp); font-weight: 800; font-size: 18px; margin: 8px 0 8px; letter-spacing: 0.005em; }
+  .demo p { font-size: 12.5px; color: var(--etch-dim); line-height: 1.6; }
+  .demo .demo-stats {
+    margin-top: 14px; font-size: 11.5px; color: var(--etch-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .demo .demo-links { display: flex; gap: 10px; margin-top: 16px; }
+  .demo .demo-links a {
+    font-family: var(--disp); font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 13px;
+  }
+  .demo .demo-links .open { background: var(--index); color: var(--index-ink); }
+  .demo .demo-links .open:hover { text-decoration: none; filter: brightness(1.08); }
+  .demo .demo-links .dl { border: 1px solid var(--etch-faint); color: var(--etch); }
+  .demo .demo-links .dl:hover { border-color: var(--etch); text-decoration: none; }
+  @media (max-width: 900px) { .demos { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .demos { grid-template-columns: 1fr; } }
+
   /* ---------- agents ---------- */
   .tool-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 6px; }
   .chip {
@@ -425,6 +457,7 @@
     <a class="wordmark" href="#top">gitatlas<span class="red">.</span></a>
     <nav class="nav-links" aria-label="Sections">
       <a href="#map">The map</a>
+      <a href="#demo">Demo</a>
       <a href="#agents">Agents</a>
       <a href="#rules">Rules</a>
       <a href="#coverage">Coverage</a>
@@ -646,12 +679,79 @@
 
   <div class="ruler" role="presentation"></div>
 
+  <!-- ============ DEMO ============ -->
+  <section id="demo">
+    <div class="wrap">
+      <div class="reveal">
+        <p class="eyebrow"><span class="idx">03</span> demo</p>
+        <h2>Five real maps. Open one, or take it with you.</h2>
+        <p class="lede">Each demo below is the actual extractor output for a well-known GitHub repository, untouched. One self-contained HTML file per map: open it in a new tab, or download it and open it on a plane. Every one was built with a single <code>gitatlas extract</code> command.</p>
+      </div>
+
+      <div class="demos corners reveal"><span class="c"></span>
+        <div class="demo">
+          <span class="demo-lang">Python</span>
+          <h3>FastAPI</h3>
+          <p>A famous API framework with a clean layered structure. The best first impression of what a map looks like.</p>
+          <p class="demo-stats">1,144 modules, 5,290 symbols, 6,396 edges</p>
+          <div class="demo-links">
+            <a class="open" href="demos/fastapi.html" target="_blank" rel="noopener">Open map</a>
+            <a class="dl" href="demos/fastapi.html" download="gitatlas-fastapi.html">Download</a>
+          </div>
+        </div>
+        <div class="demo">
+          <span class="demo-lang">JavaScript</span>
+          <h3>Express</h3>
+          <p>Small and famous. The whole framework and its tests fit in one readable picture.</p>
+          <p class="demo-stats">141 modules, 127 symbols, 84 edges</p>
+          <div class="demo-links">
+            <a class="open" href="demos/express.html" target="_blank" rel="noopener">Open map</a>
+            <a class="dl" href="demos/express.html" download="gitatlas-express.html">Download</a>
+          </div>
+        </div>
+        <div class="demo">
+          <span class="demo-lang">Go</span>
+          <h3>Gin</h3>
+          <p>A compact Go web framework with a clear module and handler split. Shows the tree-sitter side of extraction.</p>
+          <p class="demo-stats">99 modules, 1,533 symbols, 2,434 edges</p>
+          <div class="demo-links">
+            <a class="open" href="demos/gin.html" target="_blank" rel="noopener">Open map</a>
+            <a class="dl" href="demos/gin.html" download="gitatlas-gin.html">Download</a>
+          </div>
+        </div>
+        <div class="demo">
+          <span class="demo-lang">Python, 3 repos</span>
+          <h3>Flask + Click + Jinja</h3>
+          <p>Three related repos in one grouped map. The group level a single repo cannot show, with cross-repo neighborhoods.</p>
+          <p class="demo-stats">3 repos, 216 modules, 4,097 symbols, 6,700 edges</p>
+          <div class="demo-links">
+            <a class="open" href="demos/pallets.html" target="_blank" rel="noopener">Open map</a>
+            <a class="dl" href="demos/pallets.html" download="gitatlas-pallets.html">Download</a>
+          </div>
+        </div>
+        <div class="demo">
+          <span class="demo-lang">Rust</span>
+          <h3>ripgrep</h3>
+          <p>A production CLI tool. Big enough for hub detection and neighborhood clustering to earn their keep.</p>
+          <p class="demo-stats">110 modules, 3,333 symbols, 3,875 edges</p>
+          <div class="demo-links">
+            <a class="open" href="demos/ripgrep.html" target="_blank" rel="noopener">Open map</a>
+            <a class="dl" href="demos/ripgrep.html" download="gitatlas-ripgrep.html">Download</a>
+          </div>
+        </div>
+      </div>
+      <figcaption class="reveal" style="margin-top:10px"><span class="fig">No mockups</span>These files are unedited extractor output. Regenerate any of them with <code>gitatlas extract owner/repo</code>.</figcaption>
+    </div>
+  </section>
+
+  <div class="ruler" role="presentation"></div>
+
   <!-- ============ AGENTS ============ -->
   <section id="agents">
     <div class="wrap">
       <div class="two-col">
         <div class="reveal">
-          <p class="eyebrow"><span class="idx">03</span> feed it to your agent</p>
+          <p class="eyebrow"><span class="idx">04</span> feed it to your agent</p>
           <h2>Agents are brilliant sprinters with amnesia.</h2>
           <p class="lede">Every session, yours greps around, rebuilds a mental model from scratch, and bills you for it. Hand it the map instead. Both doors re-verify source fingerprints before answering, so an agent is never handed stale <code>file:line</code> data without a warning inside the result.</p>
 
@@ -710,7 +810,7 @@
   <section id="rules">
     <div class="wrap">
       <div class="reveal">
-        <p class="eyebrow"><span class="idx">04</span> the contract</p>
+        <p class="eyebrow"><span class="idx">05</span> the contract</p>
         <h2>Three rules it will not break.</h2>
       </div>
 
@@ -749,7 +849,7 @@
   <section id="coverage">
     <div class="wrap">
       <div class="reveal">
-        <p class="eyebrow"><span class="idx">05</span> the instrument panel</p>
+        <p class="eyebrow"><span class="idx">06</span> the instrument panel</p>
         <h2>Six commands. Twenty-one languages.</h2>
       </div>
 
@@ -796,7 +896,7 @@
   <!-- ============ CTA ============ -->
   <section class="cta">
     <div class="wrap reveal">
-      <p class="eyebrow" style="justify-content:center"><span class="idx">06</span> ship it with the code</p>
+      <p class="eyebrow" style="justify-content:center"><span class="idx">07</span> ship it with the code</p>
       <h2>Every repo should ship with its own map.</h2>
       <p class="lede">The same way it ships with a README. Copy the GitHub Action from the repo and every push to main regenerates the map. Point it at GitHub Pages and it becomes a URL your team can bookmark.</p>
 

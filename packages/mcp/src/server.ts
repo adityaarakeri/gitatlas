@@ -219,6 +219,7 @@ function toolModuleInfo(ctx: ToolContext, args: Record<string, unknown>): ToolRe
   return {
     text: envelope(ctx, {
       id: m.id, path: m.path, repo: g.repo, loc: m.loc,
+      ...(g.commit ? { commit: g.commit, refName: g.refName, dirty: g.dirty } : {}),
       hub: m.hub ?? false, degree: m.degree ?? 0,
       neighborhood: m.neighborhood != null
         ? g.neighborhoodLabels?.[String(m.neighborhood)] ?? `#${m.neighborhood}` : null,

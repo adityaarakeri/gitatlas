@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import * as path from "node:path";
 import * as fs from "node:fs";
 import * as os from "node:os";
+import { spawnSync } from "node:child_process";
 import { extractRepo, fingerprintFiles, globToRegExp } from "../src/extract.ts";
 
 const FIX = path.resolve(import.meta.dirname, "../../../fixtures");
@@ -26,6 +27,57 @@ function scratchRepo(layout: Record<string, string>): { root: string; cleanup: (
 function sym(g: Awaited<ReturnType<typeof extractRepo>>, name: string) {
   return g.symbols.find((s) => s.name === name);
 }
+
+/** Build a throwaway repo and commit its initial layout to a real git repo. */
+function gitRepo(layout: Record<string, string>): { root: string; cleanup: () => void; run: (...args: string[]) => string } {
+  const { root, cleanup } = scratchRepo(layout);
+  const run = (...args: string[]): string => {
+    const r = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+    if (r.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${r.stderr}`);
+    return r.stdout;
+  };
+  run("init", "--quiet");
+  run("config", "user.email", "test@example.com");
+  run("config", "user.name", "Test");
+  run("add", "-A");
+  run("commit", "--quiet", "-m", "init");
+  return { root, cleanup, run };
+}
+
+test("git provenance: a real git repo records commit, refName, and dirty state", async () => {
+  const { root, cleanup, run } = gitRepo({ "src/a.py": "def a():\n    pass\n" });
+  try {
+    const headSha = run("rev-parse", "HEAD").trim();
+    const branch = run("rev-parse", "--abbrev-ref", "HEAD").trim();
+
+    const clean = await extractRepo(root, "git-fixture");
+    assert.equal(clean.commit, headSha);
+    assert.equal(clean.refName, branch);
+    assert.equal(clean.dirty, false);
+
+    fs.writeFileSync(path.join(root, "src", "a.py"), "def a():\n    return 1\n");
+    const dirty = await extractRepo(root, "git-fixture");
+    assert.equal(dirty.commit, headSha, "HEAD is unchanged, only the working tree differs");
+    assert.equal(dirty.refName, branch);
+    assert.equal(dirty.dirty, true);
+  } finally { cleanup(); }
+});
+
+test("git provenance: a folder with no real git repository omits commit, refName, and dirty", async () => {
+  // fixtures/ is not a git repo, and repo discovery treats any ".git" entry as
+  // a repo marker without requiring it to be a valid one (see cli.test.ts).
+  const g = await extractRepo(path.join(FIX, "checkout-api"), "checkout-api");
+  assert.equal(g.commit, undefined);
+  assert.equal(g.refName, undefined);
+  assert.equal(g.dirty, undefined);
+
+  const { root, cleanup } = scratchRepo({ "src/a.py": "def a():\n    pass\n" });
+  try {
+    fs.mkdirSync(path.join(root, ".git"));
+    const marker = await extractRepo(root, "marker-fixture");
+    assert.equal(marker.commit, undefined, "an empty .git marker is not a real repository");
+  } finally { cleanup(); }
+});
 
 test("fingerprintFiles: content-based, order-independent, change-sensitive", () => {
   const { root, cleanup } = scratchRepo({

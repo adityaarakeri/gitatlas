@@ -108,7 +108,7 @@ test("meta labels stay distinct inside each detail panel", () => {
   // the panel builds an object keyed by the translated label, so two labels
   // colliding in one group would drop a row instead of showing both
   const groups = {
-    repo: ["meta.languages", "meta.modules", "meta.symbols"],
+    repo: ["meta.languages", "meta.modules", "meta.symbols", "meta.commit"],
     module: ["meta.path", "meta.symbols", "meta.lines", "meta.neighborhood", "meta.importDegree", "meta.hub"],
     symbol: ["meta.kind", "meta.line", "meta.exported", "meta.references"],
   };

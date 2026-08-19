@@ -139,6 +139,76 @@ test("check and extract --if-stale track source changes end-to-end", { timeout: 
   }
 });
 
+test("check --json reports the map's recorded commit, refName, and dirty state", { timeout: 60_000 }, () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "gitatlas-commit-check-"));
+  const out = path.join(root, "map");
+  try {
+    const repoDir = path.join(root, "alpha");
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.writeFileSync(path.join(repoDir, "index.ts"), "export function greet() { return 1; }\n");
+    const git = (...args: string[]) => {
+      const r = spawnSync("git", args, { cwd: repoDir, encoding: "utf8" });
+      if (r.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${r.stderr}`);
+      return r.stdout;
+    };
+    git("init", "--quiet");
+    git("config", "user.email", "test@example.com");
+    git("config", "user.name", "Test");
+    git("add", "-A");
+    git("commit", "--quiet", "-m", "init");
+    const headSha = git("rev-parse", "HEAD").trim();
+
+    const extract = runCli(["extract", root, "--out", out], 60_000);
+    assert.equal(extract.status, 0, extract.stderr);
+    assert.match(extract.stdout, new RegExp(`indexed alpha at ${headSha.slice(0, 12)}`));
+
+    const clean = JSON.parse(runCli(["check", root, "--out", out, "--json"], 60_000).stdout);
+    assert.equal(clean.repos[0].commit, headSha);
+    assert.equal(clean.repos[0].dirty, false);
+
+    // a tracked-file edit makes the source stale AND the working tree dirty
+    // relative to the map's recorded commit, which stays the same sha
+    fs.writeFileSync(path.join(repoDir, "index.ts"), "export function greet() { return 2; }\n");
+    const stale = JSON.parse(runCli(["check", root, "--out", out, "--json"], 60_000).stdout);
+    assert.equal(stale.repos[0].status, "stale");
+    assert.equal(stale.repos[0].commit, headSha, "check reports the map's recorded commit, not a live re-read");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("graphs and viewer render fine when repos carry no commit info", { timeout: 60_000 }, () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "gitatlas-nocommit-"));
+  const out = path.join(root, "map");
+  try {
+    const repoDir = path.join(root, "alpha");
+    // a bare ".git" marker (no real repository behind it), the same shape
+    // repo discovery accepts elsewhere in this file
+    fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
+    fs.writeFileSync(path.join(repoDir, "index.ts"), "export function greet() { return 1; }\n");
+
+    const extract = runCli(["extract", root, "--out", out], 60_000);
+    assert.equal(extract.status, 0, extract.stderr);
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(out, "group.json"), "utf8"));
+    assert.equal(manifest.repos[0].commit, undefined);
+    assert.equal(manifest.repos[0].dirty, undefined);
+
+    const graph = JSON.parse(fs.readFileSync(path.join(out, "alpha.graph.json"), "utf8"));
+    assert.equal(graph.commit, undefined);
+    assert.equal(graph.dirty, undefined);
+
+    const html = fs.readFileSync(path.join(out, "index.html"), "utf8");
+    assert.ok(html.length > 0);
+
+    const check = runCli(["check", root, "--out", out], 60_000);
+    assert.equal(check.status, 0, check.stderr);
+    assert.match(check.stdout, /map is fresh/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("CLI dispatches site to the playground server", { timeout: 10_000 }, async () => {
   const port = await reservePort();
   const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), "gitatlas-cli-site-"));
