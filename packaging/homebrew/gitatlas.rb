@@ -8,8 +8,8 @@
 class Gitatlas < Formula
   desc "Multi-repo architecture maps you can zoom into"
   homepage "https://github.com/adityaarakeri/gitatlas"
-  url "https://registry.npmjs.org/gitatlas/-/gitatlas-0.10.0.tgz"
-  sha256 "3b8e20b1d19298d0be6775164ee38caa3bbec977631229ff8d9d80a136ca9a5b"
+  url "https://registry.npmjs.org/gitatlas/-/gitatlas-0.12.1.tgz"
+  sha256 "d60c308459da864713f4539ffa0043019d11b1d1d7eb715e792fa28f4f004f6d"
   license "MIT"
 
   depends_on "node"
