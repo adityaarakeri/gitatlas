@@ -1,7 +1,11 @@
 # Changelog
 
 ## Unreleased
+
+## 0.12.1 - 2026-08-19
+- Bad `extract` targets are rejected with a clear message instead of a raw Node error: an existing file (not a directory) given as the target now says `not a directory: <path>`, and a folder that becomes unreadable mid-discovery reports `could not read folder <dir>: <reason>` rather than throwing `readdirSync` past the CLI's error handling. Same `TargetError` path as the existing "no such folder" case, so all three read the same way and exit 1 without a stack trace
 - Every graph now records the git commit it was extracted at: `commit` (full sha), `refName` (branch or tag, when known), and `dirty` (uncommitted changes at extract time) on `RepoGraph` and on each `GroupManifest` repo entry. Additive schema fields, no version bump. The viewer's repo detail panel shows the short sha (full sha on hover, marked when dirty); `brief` puts it in each repo's header line; the MCP `module_info` and `check_freshness` tools carry it; `gitatlas check --json` reports the map's recorded commit per repo. Cloned GitHub targets and local git repos both get it via a shared `readGitInfo` in `packages/extractor/src/clone.ts`; a folder with no real git history simply omits the fields
+- `package-lock.json` resynced: it had drifted to a stale `0.10.0`, which is what `npm ci` reads for the package version
 
 ## 0.11.0 - 2026-08-11
 - The viewer UI is translatable, and ships in English, `zh-CN`, `ja`, `es`, and `pt-BR`. Catalogs are flat JSON at `packages/viewer/locales/<code>.json` and every one is baked into the generated file, so a single map can be opened by a mixed-language team; the file picks the reader's browser language on open, falls back to English, and shows a picker beside the theme toggle when it carries more than one language. `gitatlas extract --lang <code>` pins the default instead, and an unknown code lists the ones that exist. Schema values stay English on the wire and are translated only where they are displayed, so graph JSON is byte-identical whatever `--lang` says. Plurals go through `Intl.PluralRules` rather than an English `n === 1` test, which is what the badge under a directory was doing. Only English is human-reviewed: the other four carry `reviewed: false` and are labeled machine drafts in `docs/i18n.md`, and a test refuses `reviewed: true` without a named maintainer
