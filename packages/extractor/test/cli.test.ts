@@ -74,6 +74,20 @@ test("bad targets are reported without a stack trace or a network call", () => {
   assert.match(missing.stderr, /no such folder/);
 });
 
+test("existing files are rejected as extraction targets without a stack trace", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "gitatlas-file-target-"));
+  const file = path.join(root, "not-a-folder");
+  fs.writeFileSync(file, "not a repository\n");
+  try {
+    const result = runCli(["extract", file]);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /not a directory/);
+    assert.doesNotMatch(result.stderr, /at Object|at main|readdirSync/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("the read commands accept the target extract was given", () => {
   const cache = fs.mkdtempSync(path.join(os.tmpdir(), "gitatlas-target-cache-"));
   try {

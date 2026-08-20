@@ -1,6 +1,6 @@
 {
   "name": "gitatlas",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Turn a folder of repos or any GitHub repo into one interactive HTML architecture map, from system down to function. 21 languages, fully offline, with an MCP server for coding agents.",
   "license": "MIT",
   "author": "Aditya Arakeri",

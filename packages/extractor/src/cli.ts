@@ -80,6 +80,13 @@ function loadLocales(): Record<string, LocaleCatalog> {
   return catalogs;
 }
 
+function directoryTargetError(dir: string, error: unknown): TargetError {
+  const code = error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
+  if (code === "ENOENT") return new TargetError(`no such folder: ${dir}`);
+  if (code === "ENOTDIR") return new TargetError(`not a directory: ${dir}`);
+  const message = error instanceof Error ? error.message : String(error);
+  return new TargetError(`could not read folder ${dir}: ${message}`);
+}
 async function main() {
   const args = process.argv.slice(2);
   const cmd = args[0];
@@ -97,10 +104,19 @@ async function main() {
       cacheRoot: cacheIdx > -1 ? path.resolve(args[cacheIdx + 1]) : undefined,
       ref: refIdx > -1 ? args[refIdx + 1] : undefined,
     });
+    if (!fs.statSync(groupDir).isDirectory()) {
+      throw new TargetError(`not a directory: ${groupDir}`);
+    }
   } catch (error) {
-    if (!(error instanceof TargetError)) throw error;
-    console.error(error.message);
-    process.exit(1);
+    if (error instanceof TargetError) {
+      console.error(error.message);
+      process.exit(1);
+    }
+    if (error instanceof Error && "code" in error) {
+      console.error(directoryTargetError(path.resolve(args[1]), error).message);
+      process.exit(1);
+    }
+    throw error;
   }
   const outIdx = args.indexOf("--out");
   const outDir = path.resolve(outIdx > -1 ? args[outIdx + 1] : path.join(groupDir, ".gitatlas"));
@@ -153,17 +169,27 @@ async function main() {
       console.warn(`warning: discovery stopped after scanning ${maxScan} directories; rerun with --max-scan <n> to search further`);
     }
     if (found.length > 0) return found;
-    return fs.readdirSync(root, { withFileTypes: true })
-      .filter((e) => e.isDirectory() && !shouldSkipDir(e.name))
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((e) => ({ name: e.name, dir: path.join(root, e.name) }));
+    try {
+      return fs.readdirSync(root, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && !shouldSkipDir(e.name))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((e) => ({ name: e.name, dir: path.join(root, e.name) }));
+    } catch (error) {
+      throw directoryTargetError(root, error);
+    }
   }
   const depthIdx = args.indexOf("--depth");
   const maxDepth = depthIdx > -1 ? parseInt(args[depthIdx + 1], 10) : Infinity;
   const scanIdx = args.indexOf("--max-scan");
   const maxScan = scanIdx > -1 ? parseInt(args[scanIdx + 1], 10) : 25000;
-  const repos = findRepos(groupDir, maxDepth, maxScan);
-
+  let repos: { name: string; dir: string }[];
+  try {
+    repos = findRepos(groupDir, maxDepth, maxScan);
+  } catch (error) {
+    if (!(error instanceof TargetError)) throw error;
+    console.error(error.message);
+    process.exit(1);
+  }
   // ── submodules: split (default) | absorb | skip ──
   const subIdx = args.indexOf("--submodules");
   const subMode = subIdx > -1 ? args[subIdx + 1] : "split";
