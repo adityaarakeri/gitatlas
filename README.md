@@ -1,6 +1,10 @@
 <div align="center">
 
-# gitatlas
+<h1>
+  <a href="https://github.com/adityaarakeri/gitatlas">
+    <img src="docs/image.jpg" alt="GitAtlas" width="670">
+  </a>
+</h1>
 
 **One map. Every repo. Down to the function.**
 
