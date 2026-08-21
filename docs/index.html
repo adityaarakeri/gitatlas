@@ -181,6 +181,11 @@
 
   /* ---------- hero ---------- */
   .hero { padding: clamp(56px, 9vw, 110px) 0 clamp(48px, 7vw, 96px); }
+  .hero-mark {
+    max-width: 689px; margin: 0 auto clamp(40px, 6vw, 72px);
+    overflow: hidden;
+  }
+  .hero-mark img { display: block; width: 100%; height: auto; }
   .hero-grid {
     display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
     gap: clamp(32px, 5vw, 72px); align-items: center;
@@ -478,8 +483,14 @@
 
   <!-- ============ HERO ============ -->
   <section class="hero">
-    <div class="wrap hero-grid">
-      <div>
+    <div class="wrap">
+      <figure class="hero-mark plate corners">
+        <span class="c"></span>
+        <img src="image.jpg" width="689" height="240" alt="GitAtlas" fetchpriority="high">
+      </figure>
+
+      <div class="hero-grid">
+        <div>
         <p class="eyebrow"><span class="idx">MIT</span> open source / local only / 21 languages</p>
         <h1>One map. Every repo. Down to the function<span class="red">.</span></h1>
         <p class="sub">Point it at a folder of repositories, or at a GitHub repo. Get <strong>one interactive HTML file</strong> that zooms from your whole system, to a repo, to a module, to a single function. No server, no cloud, no account. Your code never leaves your machine.</p>
@@ -569,6 +580,7 @@
           <span class="key"><svg width="14" height="14"><circle cx="7" cy="7" r="5.5" fill="none" stroke="var(--index)" stroke-width="1.6"/></svg>hub</span>
         </div>
       </figure>
+      </div>
     </div>
   </section>
 

@@ -142,12 +142,14 @@ Nothing comes from a language model. When `helper()` could be three different sy
 
 ## How it compares
 
-| | Scope | Who authors the model | Output |
+| Tool | Scope | Model construction | Primary experience |
 |---|---|---|---|
-| **gitatlas** | a folder of repos, or a GitHub repo | the extractor | one local HTML file |
-| GitNexus, CodeGraph | one repo per graph | the extractor | a graph for agents |
-| Structurizr | whatever you declare | you, by hand | rendered C4 diagrams |
-| Sourcegraph | org-wide | the indexer | a hosted search UI |
+| **gitatlas** | a local repo, a folder of repos, or one GitHub repo | static extractor | one self-contained local HTML map, plus JSON artifacts |
+| [GitNexus](https://github.com/abhigyanpatwari/GitNexus) | individual repos and multi-repo groups | indexer | local knowledge graph, MCP tools, and web explorer |
+| [CodeGraphContext](https://github.com/CodeGraphContext/CodeGraphContext) | indexed repository graphs | indexer | graph database queried through CLI or MCP |
+| [Synaptic](https://github.com/ColinVaughn/Synaptic) | a repo, monorepo, or federated multi-repo workspace | indexer and analyzer | graph artifacts, CLI, and MCP |
+| [Structurizr](https://structurizr.com/) | whatever architecture you declare | you, using DSL or code | C4 workspaces, diagrams, and exports |
+| [Sourcegraph](https://sourcegraph.com/) | organization-wide, across repositories and code hosts | indexers | cloud or self-hosted search, code intelligence, and AI tools |
 
 Hand-written models drift the day their author goes on holiday. This one regenerates from the code.
 
